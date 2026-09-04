@@ -12,6 +12,7 @@ import {
   Loader2,
   Mail,
   RefreshCw,
+  Search,
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
