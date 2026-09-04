@@ -18,10 +18,32 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { retryCustomerPayment } from "@/lib/customer-recovery.functions";
+import {
+  createRecoveryOrder,
+  verifyRecoveryPayment,
+} from "@/lib/razorpay.functions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
+const RAZORPAY_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+
+function loadRazorpay(): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const w = window as any;
+    if (w.Razorpay) return resolve(w.Razorpay);
+    const existing = document.querySelector<HTMLScriptElement>(
+      `script[src="${RAZORPAY_SRC}"]`,
+    );
+    const script = existing ?? document.createElement("script");
+    script.src = RAZORPAY_SRC;
+    script.async = true;
+    script.addEventListener("load", () => resolve((window as any).Razorpay));
+    script.addEventListener("error", () =>
+      reject(new Error("Could not load the secure checkout. Check your connection.")),
+    );
+    if (!existing) document.body.appendChild(script);
+  });
+}
+
 
 type Transaction = {
   id: string;
