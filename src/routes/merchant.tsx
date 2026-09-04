@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   Bot,
   CircleDollarSign,
+  Download,
   Link2,
   Loader2,
   Mail,
