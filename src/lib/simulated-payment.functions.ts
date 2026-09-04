@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
+import { parsePhoneNumberFromString } from "libphonenumber-js";
+
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
@@ -9,9 +11,18 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  */
 export const simulateRecoveryPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { transactionId: string }) => {
+  .inputValidator((data: { transactionId: string; phone?: string }) => {
     if (!data?.transactionId) throw new Error("transactionId is required");
-    return data;
+    let phone: string | null = null;
+    if (data.phone) {
+      if (data.phone.length > 24) throw new Error("Phone number is too long");
+      const parsed = parsePhoneNumberFromString(data.phone);
+      if (!parsed || !parsed.isValid()) {
+        throw new Error("Enter a valid phone number in international format.");
+      }
+      phone = parsed.number; // E.164
+    }
+    return { transactionId: data.transactionId, phone };
   })
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
@@ -58,9 +69,20 @@ export const simulateRecoveryPayment = createServerFn({ method: "POST" })
 
     const { error: txError } = await supabaseAdmin
       .from("transactions")
-      .update({ status: "recovered", attempts })
+      .update({
+        status: "recovered",
+        attempts,
+        ...(data.phone ? { customer_phone_e164: data.phone } : {}),
+      })
       .eq("id", tx.id);
     if (txError) throw new Error(txError.message);
+
+    if (data.phone) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ phone_e164: data.phone })
+        .eq("id", userId);
+    }
 
     await supabaseAdmin.from("audit_logs").insert({
       actor_id: userId,
@@ -75,6 +97,7 @@ export const simulateRecoveryPayment = createServerFn({ method: "POST" })
         new_status: "recovered",
         attempts,
         simulated: true,
+        ...(data.phone ? { contact_phone_e164: data.phone } : {}),
       },
     });
 

@@ -20,6 +20,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { simulateRecoveryPayment } from "@/lib/simulated-payment.functions";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { PhoneInput, toE164 } from "@/components/phone-input";
+import { DEFAULT_COUNTRY } from "@/lib/countries";
+import type { CountryCode } from "libphonenumber-js";
 
 
 type Transaction = {
@@ -73,6 +77,8 @@ function RecoveryPage() {
   const payNow = useServerFn(simulateRecoveryPayment);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
+  const [phone, setPhone] = useState("");
   const [result, setResult] = useState<
     | { type: "success"; status: string }
     | { type: "error"; message: string }
@@ -107,7 +113,16 @@ function RecoveryPage() {
   const payMutation = useMutation({
     mutationFn: async () => {
       setResult(null);
-      return await payNow({ data: { transactionId: params.transactionId } });
+      const phoneE164 = phone.trim() ? toE164(phone, country) : null;
+      if (phone.trim() && !phoneE164) {
+        throw new Error("Enter a valid phone number for the selected country.");
+      }
+      return await payNow({
+        data: {
+          transactionId: params.transactionId,
+          ...(phoneE164 ? { phone: phoneE164 } : {}),
+        },
+      });
     },
     onSuccess: (data) => {
       setResult({ type: "success", status: data.status });
@@ -238,6 +253,27 @@ function RecoveryPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-6 space-y-2">
+                <Label
+                  htmlFor="recovery-phone"
+                  className="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                >
+                  Contact phone (optional)
+                </Label>
+                <PhoneInput
+                  id="recovery-phone"
+                  country={country}
+                  onCountryChange={setCountry}
+                  value={phone}
+                  onValueChange={setPhone}
+                  disabled={payMutation.isPending}
+                  ariaLabel="Contact phone number"
+                />
+                <p className="text-xs text-muted-foreground">
+                  We'll text your payment confirmation to this number.
+                </p>
               </div>
 
               <div className="mt-6 space-y-4">
