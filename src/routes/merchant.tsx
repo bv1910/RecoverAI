@@ -105,15 +105,16 @@ const SAMPLE_HISTORY: {
   currency: string;
   date: string;
   status: string;
+  method: string;
 }[] = [
-  { id: "pay_4f9c21a0", amount_cents: 8999, currency: "USD", date: "2026-09-03T14:22:00Z", status: "recovered" },
-  { id: "pay_7d1e88b2", amount_cents: 14900, currency: "USD", date: "2026-09-02T09:10:00Z", status: "failed" },
-  { id: "pay_2a6c54ef", amount_cents: 4200, currency: "USD", date: "2026-09-01T17:45:00Z", status: "in_progress" },
-  { id: "pay_9b0d31fa", amount_cents: 12500, currency: "USD", date: "2026-08-30T11:05:00Z", status: "recovered" },
-  { id: "pay_c3481e7d", amount_cents: 6700, currency: "USD", date: "2026-08-29T20:30:00Z", status: "escalated" },
-  { id: "pay_5e2f90bc", amount_cents: 9800, currency: "USD", date: "2026-08-28T08:15:00Z", status: "recovered" },
-  { id: "pay_8a1d6f3c", amount_cents: 5400, currency: "USD", date: "2026-08-27T13:40:00Z", status: "refund" },
-  { id: "pay_6b4e2d90", amount_cents: 11200, currency: "USD", date: "2026-08-26T10:20:00Z", status: "failed" },
+  { id: "pay_4f9c21a0", amount_cents: 8999, currency: "USD", date: "2026-09-03T14:22:00Z", status: "recovered", method: "Visa •••• 4242" },
+  { id: "pay_7d1e88b2", amount_cents: 14900, currency: "USD", date: "2026-09-02T09:10:00Z", status: "failed", method: "Mastercard •••• 5318" },
+  { id: "pay_2a6c54ef", amount_cents: 4200, currency: "USD", date: "2026-09-01T17:45:00Z", status: "in_progress", method: "UPI · nandini@oksbi" },
+  { id: "pay_9b0d31fa", amount_cents: 12500, currency: "USD", date: "2026-08-30T11:05:00Z", status: "recovered", method: "Visa •••• 4242" },
+  { id: "pay_c3481e7d", amount_cents: 6700, currency: "USD", date: "2026-08-29T20:30:00Z", status: "escalated", method: "Amex •••• 1005" },
+  { id: "pay_5e2f90bc", amount_cents: 9800, currency: "USD", date: "2026-08-28T08:15:00Z", status: "recovered", method: "Mastercard •••• 5318" },
+  { id: "pay_8a1d6f3c", amount_cents: 5400, currency: "USD", date: "2026-08-27T13:40:00Z", status: "refund", method: "Visa •••• 4242" },
+  { id: "pay_6b4e2d90", amount_cents: 11200, currency: "USD", date: "2026-08-26T10:20:00Z", status: "failed", method: "UPI · vivek@ybl" },
 ];
 
 
