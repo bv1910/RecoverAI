@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   Bot,
   CircleDollarSign,
+  Download,
   Link2,
   Loader2,
   Mail,
@@ -275,6 +276,35 @@ function MerchantDashboard() {
     .filter((t) => t.status === "recovered")
     .reduce((sum, t) => sum + t.amount_cents, 0);
   const rate = atRisk + recovered > 0 ? Math.round((recovered / (atRisk + recovered)) * 100) : 0;
+
+  const filteredHistory = SAMPLE_HISTORY.filter((row) => {
+    const q = historyQuery.trim().toLowerCase();
+    if (!q) return true;
+    return row.id.toLowerCase().includes(q) || row.status.toLowerCase().includes(q);
+  });
+
+  const downloadHistoryCsv = () => {
+    const header = ["Payment ID", "Amount", "Currency", "Date", "Status"];
+    const lines = filteredHistory.map((row) => [
+      row.id,
+      (row.amount_cents / 100).toFixed(2),
+      row.currency,
+      new Date(row.date).toISOString(),
+      row.status,
+    ]);
+    const csv = [header, ...lines]
+      .map((cols) => cols.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "transaction-history.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const selected = transactions.find((t) => t.id === selectedId) ?? null;
   const selectedAnalysis = selected ? analyses[selected.id] : undefined;
@@ -564,15 +594,26 @@ function MerchantDashboard() {
                 Recent payments across all recovery stages.
               </p>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={historyQuery}
-                onChange={(e) => setHistoryQuery(e.target.value)}
-                placeholder="Search by payment ID or status"
-                className="h-9 w-full rounded-xl border border-input bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-64"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={historyQuery}
+                  onChange={(e) => setHistoryQuery(e.target.value)}
+                  placeholder="Search by payment ID or status"
+                  className="h-9 w-full rounded-xl border border-input bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-64"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={downloadHistoryCsv}
+                disabled={filteredHistory.length === 0}
+                className="rounded-xl text-xs"
+              >
+                <Download className="h-4 w-4" />
+                Download report
+              </Button>
             </div>
           </div>
 
@@ -587,14 +628,7 @@ function MerchantDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {SAMPLE_HISTORY.filter((row) => {
-                  const q = historyQuery.trim().toLowerCase();
-                  if (!q) return true;
-                  return (
-                    row.id.toLowerCase().includes(q) ||
-                    row.status.toLowerCase().includes(q)
-                  );
-                }).map((row) => (
+                {filteredHistory.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-secondary">
                     <td className="px-5 py-3.5 font-mono text-xs text-foreground">
                       {row.id}
