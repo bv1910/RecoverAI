@@ -138,14 +138,28 @@ function LoginPage() {
     if (result.redirected) return;
   };
 
+  const sendPhoneCode = async (phoneE164: string) => {
+    setLoading("otp");
+    const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
+    setLoading(null);
+    if (error) {
+      setMessage({ tone: "error", text: error.message });
+      return false;
+    }
+    localStorage.setItem(PHONE_KEY, phoneE164);
+    setPendingPhone(phoneE164);
+    setCode("");
+    setMessage({ tone: "info", text: `We sent a 6-digit code to ${phoneE164}.` });
+    return true;
+  };
+
   const handleOtp = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!value.trim()) return;
     setMessage(null);
 
-    let phoneE164: string | null = null;
     if (method === "phone") {
-      phoneE164 = toE164(value, country);
+      const phoneE164 = toE164(value, country);
       if (!phoneE164) {
         setMessage({
           tone: "error",
@@ -153,31 +167,43 @@ function LoginPage() {
         });
         return;
       }
+      localStorage.setItem(ROLE_KEY, role);
+      await sendPhoneCode(phoneE164);
+      return;
     }
 
     setLoading("otp");
     localStorage.setItem(ROLE_KEY, role);
-    const { error } =
-      method === "email"
-        ? await supabase.auth.signInWithOtp({
-            email: value.trim(),
-            options: { emailRedirectTo: window.location.origin },
-          })
-        : await supabase.auth.signInWithOtp({ phone: phoneE164! });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: value.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
     setLoading(null);
-    if (!error && phoneE164) localStorage.setItem(PHONE_KEY, phoneE164);
     setMessage(
       error
         ? { tone: "error", text: error.message }
-        : {
-            tone: "info",
-            text:
-              method === "email"
-                ? "Check your inbox for a secure sign-in link."
-                : `We sent a one-time code to ${phoneE164}.`,
-          },
+        : { tone: "info", text: "Check your inbox for a secure sign-in link." },
     );
   };
+
+  const handleVerify = async (token: string) => {
+    if (!pendingPhone || token.length !== 6) return;
+    setMessage(null);
+    setLoading("verify");
+    const { error } = await supabase.auth.verifyOtp({
+      phone: pendingPhone,
+      token,
+      type: "sms",
+    });
+    setLoading(null);
+    if (error) {
+      setCode("");
+      setMessage({ tone: "error", text: error.message || "That code is invalid or expired." });
+      return;
+    }
+    // onAuthStateChange handles profile upsert + redirect.
+  };
+
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
