@@ -702,6 +702,16 @@ function MerchantDashboard() {
                     <td className="px-5 py-3.5">
                       <StatusPill status={row.status} />
                     </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDetailRow(row)}
+                        className="rounded-xl text-xs"
+                      >
+                        View details
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
