@@ -87,6 +87,7 @@ const STATUS_STYLE: Record<string, string> = {
   recovered: "bg-emerald-500/10 text-emerald-700",
   escalated: "bg-amber-500/15 text-amber-700",
   lost: "bg-muted text-muted-foreground",
+  refund: "bg-sky-500/10 text-sky-700",
 };
 
 const probabilityStyle = (probability: number) =>
