@@ -171,6 +171,7 @@ function MerchantDashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [sweepDone, setSweepDone] = useState(false);
+  const [historyQuery, setHistoryQuery] = useState("");
 
   const analyze = useServerFn(analyzeTransaction);
   const analyzeAll = useServerFn(analyzeOpenCases);
