@@ -313,66 +313,123 @@ function LoginPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-            {([
-              { key: "email" as const, label: "Email", icon: Mail },
-              { key: "phone" as const, label: "Phone", icon: Phone },
-            ]).map((tab) => {
-              const Icon = tab.icon;
-              const active = method === tab.key;
-              return (
+          {pendingPhone ? (
+            <div className="mt-4 space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Enter the 6-digit code</Label>
+                <p className="mt-1 text-xs text-muted-foreground">Sent to {pendingPhone}</p>
+              </div>
+              <InputOTP
+                maxLength={6}
+                value={code}
+                onChange={(v) => {
+                  setCode(v);
+                  if (v.length === 6) void handleVerify(v);
+                }}
+                disabled={loading !== null}
+              >
+                <InputOTPGroup>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+              <Button
+                type="button"
+                onClick={() => void handleVerify(code)}
+                disabled={loading !== null || code.length !== 6}
+                className="h-12 w-full rounded-xl text-sm font-semibold"
+              >
+                {loading === "verify" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Verify and continue
+              </Button>
+              <div className="flex items-center justify-between text-xs">
                 <button
-                  key={tab.key}
                   type="button"
+                  className="text-muted-foreground underline-offset-4 hover:underline"
                   onClick={() => {
-                    setMethod(tab.key);
-                    setValue("");
+                    setPendingPhone(null);
+                    setCode("");
                     setMessage(null);
                   }}
-                  className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-card text-foreground shadow-soft"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
+                  Use a different number
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  disabled={loading !== null}
+                  className="font-medium text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+                  onClick={() => void sendPhoneCode(pendingPhone)}
+                >
+                  Resend code
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+                {([
+                  { key: "email" as const, label: "Email", icon: Mail },
+                  { key: "phone" as const, label: "Phone", icon: Phone },
+                ]).map((tab) => {
+                  const Icon = tab.icon;
+                  const active = method === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => {
+                        setMethod(tab.key);
+                        setValue("");
+                        setMessage(null);
+                      }}
+                      className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-card text-foreground shadow-soft"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-          <form onSubmit={handleOtp} className="mt-4 space-y-3">
-            {method === "email" ? (
-              <Input
-                type="email"
-                inputMode="email"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="you@company.com"
-                aria-label="Email address"
-                maxLength={255}
-                className="h-12 rounded-xl"
-                required
-              />
-            ) : (
-              <PhoneInput
-                country={country}
-                onCountryChange={setCountry}
-                value={value}
-                onValueChange={setValue}
-                disabled={loading !== null}
-              />
-            )}
-            <Button
-              type="submit"
-              disabled={loading !== null}
-              className="h-12 w-full rounded-xl text-sm font-semibold"
-            >
-              {loading === "otp" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Continue with {method === "email" ? "email" : "phone"}
-            </Button>
-          </form>
+              <form onSubmit={handleOtp} className="mt-4 space-y-3">
+                {method === "email" ? (
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder="you@company.com"
+                    aria-label="Email address"
+                    maxLength={255}
+                    className="h-12 rounded-xl"
+                    required
+                  />
+                ) : (
+                  <PhoneInput
+                    country={country}
+                    onCountryChange={setCountry}
+                    value={value}
+                    onValueChange={setValue}
+                    disabled={loading !== null}
+                  />
+                )}
+                <Button
+                  type="submit"
+                  disabled={loading !== null}
+                  className="h-12 w-full rounded-xl text-sm font-semibold"
+                >
+                  {loading === "otp" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Continue with {method === "email" ? "email" : "phone"}
+                </Button>
+              </form>
+            </>
+          )}
+
 
           {message ? (
             <p
