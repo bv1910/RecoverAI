@@ -141,8 +141,10 @@ function LoginPage() {
     if (result.redirected) return;
   };
 
-  // Demo OTP: no SMS provider is connected yet, so we accept a fixed code.
+  // Real SMS codes are sent when an SMS sender is configured on the backend.
+  // Until then we fall back to a demo code so sign-in still works.
   const DEMO_OTP = "123456";
+  const [smsLive, setSmsLive] = useState(false);
   const demoIdentity = (phoneE164: string) => ({
     email: `${phoneE164.replace(/\D/g, "")}@phone.recoverai.demo`,
     password: `demo-${phoneE164.replace(/\D/g, "")}-recoverai`,
@@ -150,17 +152,24 @@ function LoginPage() {
 
   const sendPhoneCode = async (phoneE164: string) => {
     setLoading("otp");
-    await new Promise((r) => setTimeout(r, 400));
+    const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
     setLoading(null);
     localStorage.setItem(PHONE_KEY, phoneE164);
     setPendingPhone(phoneE164);
     setCode("");
+    if (!error) {
+      setSmsLive(true);
+      setMessage({ tone: "info", text: `We sent a 6-digit code to ${phoneE164}.` });
+      return true;
+    }
+    setSmsLive(false);
     setMessage({
       tone: "info",
-      text: `Demo mode — we sent a 6-digit code to ${phoneE164}. Use ${DEMO_OTP}.`,
+      text: `Text messages aren't switched on yet, so use the demo code ${DEMO_OTP} for ${phoneE164}.`,
     });
     return true;
   };
+
 
   const handleOtp = async (event: React.FormEvent) => {
     event.preventDefault();
