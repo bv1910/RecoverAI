@@ -1,0 +1,450 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  BadgeCheck,
+  Bot,
+  CircleDollarSign,
+  Link2,
+  Loader2,
+  Mail,
+  RefreshCw,
+  ShieldAlert,
+  Sparkles,
+} from "lucide-react";
+
+import { supabase } from "@/integrations/supabase/client";
+import { analyzeTransaction, runRecoveryAction } from "@/lib/ai-recovery.functions";
+import { Button } from "@/components/ui/button";
+
+export const Route = createFileRoute("/merchant")({
+  head: () => ({
+    meta: [
+      { title: "Merchant Dashboard — RecoverAI" },
+      {
+        name: "description",
+        content:
+          "Track revenue at risk, recovered revenue and active cases, and let the AI Recovery Agent resolve failed payments.",
+      },
+      { property: "og:title", content: "Merchant Dashboard — RecoverAI" },
+      {
+        property: "og:description",
+        content: "Recover failed payments with AI-guided retries, payment links and reminders.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: MerchantDashboard,
+});
+
+type Transaction = {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  failure_code: string;
+  failure_reason: string;
+  payment_method: string;
+  attempts: number;
+  failed_at: string;
+};
+
+type Analysis = {
+  transaction_id: string;
+  root_cause: string;
+  recovery_probability: number;
+  recommended_action: string;
+  rationale: string;
+};
+
+const ACTIONS = [
+  { key: "retry_payment", label: "Retry Payment", icon: RefreshCw },
+  { key: "create_payment_link", label: "Create Payment Link", icon: Link2 },
+  { key: "send_reminder", label: "Send Reminder", icon: Mail },
+  { key: "escalate", label: "Escalate", icon: ShieldAlert },
+] as const;
+
+const money = (cents: number, currency = "USD") =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+
+const STATUS_STYLE: Record<string, string> = {
+  failed: "bg-destructive/10 text-destructive",
+  in_progress: "bg-accent text-accent-foreground",
+  recovered: "bg-emerald-500/10 text-emerald-700",
+  escalated: "bg-amber-500/15 text-amber-700",
+  lost: "bg-muted text-muted-foreground",
+};
+
+function StatusPill({ status }: { status: string }) {
+  return (
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
+        STATUS_STYLE[status] ?? "bg-muted text-muted-foreground"
+      }`}
+    >
+      {status.replace("_", " ")}
+    </span>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+  icon: typeof CircleDollarSign;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 shadow-soft ${
+        accent ? "bg-brand-gradient border-transparent text-brand-foreground" : "border-border bg-card"
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className={`text-xs font-semibold uppercase tracking-wider ${
+            accent ? "text-brand-foreground/75" : "text-muted-foreground"
+          }`}
+        >
+          {label}
+        </span>
+        <Icon className={`h-4 w-4 ${accent ? "text-brand-foreground/80" : "text-muted-foreground"}`} />
+      </div>
+      <p className="mt-4 text-3xl font-semibold tracking-tight">{value}</p>
+      <p className={`mt-1 text-xs ${accent ? "text-brand-foreground/70" : "text-muted-foreground"}`}>
+        {hint}
+      </p>
+    </div>
+  );
+}
+
+function MerchantDashboard() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null);
+  const [analyses, setAnalyses] = useState<Record<string, Analysis>>({});
+
+  const analyze = useServerFn(analyzeTransaction);
+  const act = useServerFn(runRecoveryAction);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) navigate({ to: "/", replace: true });
+    });
+  }, [navigate]);
+
+  const { data: transactions = [], isLoading } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("failed_at", { ascending: false });
+      if (error) throw error;
+      return data as Transaction[];
+    },
+  });
+
+  const { data: logs = [] } = useQuery({
+    queryKey: ["audit_logs"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .select("id, action, status, details, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const analyzeMutation = useMutation({
+    mutationFn: (transactionId: string) => analyze({ data: { transactionId } }),
+    onSuccess: (result) => {
+      setAnalyses((prev) => ({ ...prev, [result.transaction_id]: result }));
+      queryClient.invalidateQueries({ queryKey: ["audit_logs"] });
+    },
+    onError: (error: Error) => setBanner(error.message),
+  });
+
+  const actionMutation = useMutation({
+    mutationFn: (vars: { transactionId: string; action: string }) => act({ data: vars }),
+    onSuccess: (result) => {
+      setBanner(result.outcome);
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["audit_logs"] });
+    },
+    onError: (error: Error) => setBanner(error.message),
+  });
+
+  const openCases = transactions.filter((t) =>
+    ["failed", "in_progress", "escalated"].includes(t.status),
+  );
+  const atRisk = openCases.reduce((sum, t) => sum + t.amount_cents, 0);
+  const recovered = transactions
+    .filter((t) => t.status === "recovered")
+    .reduce((sum, t) => sum + t.amount_cents, 0);
+  const rate = atRisk + recovered > 0 ? Math.round((recovered / (atRisk + recovered)) * 100) : 0;
+
+  const selected = transactions.find((t) => t.id === selectedId) ?? null;
+  const selectedAnalysis = selected ? analyses[selected.id] : undefined;
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/", replace: true });
+  };
+
+  return (
+    <div className="min-h-screen bg-secondary">
+      <header className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-5 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="bg-brand-gradient flex h-9 w-9 items-center justify-center rounded-xl text-brand-foreground">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="font-display text-sm font-semibold text-foreground">RecoverAI</p>
+              <p className="text-xs text-muted-foreground">Merchant workspace</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={signOut} className="rounded-xl">
+            Sign out
+          </Button>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-6xl space-y-6 px-5 py-8">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Revenue at risk"
+            value={money(atRisk)}
+            hint={`${openCases.length} unresolved payments`}
+            icon={AlertTriangle}
+            accent
+          />
+          <MetricCard
+            label="Revenue recovered"
+            value={money(recovered)}
+            hint="Settled after intervention"
+            icon={CircleDollarSign}
+          />
+          <MetricCard
+            label="Recovery rate"
+            value={`${rate}%`}
+            hint="Recovered vs. total exposed"
+            icon={ArrowUpRight}
+          />
+          <MetricCard
+            label="Active cases"
+            value={String(openCases.length)}
+            hint="Awaiting an action"
+            icon={BadgeCheck}
+          />
+        </div>
+
+        {banner ? (
+          <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 text-sm text-foreground shadow-soft">
+            <span>{banner}</span>
+            <button
+              onClick={() => setBanner(null)}
+              className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+            >
+              Dismiss
+            </button>
+          </div>
+        ) : null}
+
+        <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+          <section className="rounded-2xl border border-border bg-card shadow-soft">
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="text-base font-semibold text-foreground">Failed transactions</h2>
+              <p className="text-xs text-muted-foreground">
+                Select a case to run the AI Recovery Agent.
+              </p>
+            </div>
+
+            {isLoading ? (
+              <p className="px-5 py-10 text-sm text-muted-foreground">Loading cases…</p>
+            ) : transactions.length === 0 ? (
+              <p className="px-5 py-10 text-sm text-muted-foreground">No transactions yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {transactions.map((tx) => {
+                  const active = tx.id === selectedId;
+                  return (
+                    <li key={tx.id}>
+                      <button
+                        onClick={() => setSelectedId(tx.id)}
+                        className={`flex w-full flex-wrap items-center justify-between gap-3 px-5 py-4 text-left transition-colors ${
+                          active ? "bg-accent/60" : "hover:bg-secondary"
+                        }`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {tx.customer_name}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {tx.failure_reason} · {tx.attempts} attempt
+                            {tx.attempts === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <StatusPill status={tx.status} />
+                          <span className="text-sm font-semibold text-foreground">
+                            {money(tx.amount_cents, tx.currency)}
+                          </span>
+                        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          <section className="space-y-6">
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">AI Recovery Agent</h2>
+              </div>
+
+              {!selected ? (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Pick a case from the list to get a root cause, recovery probability and a
+                  recommended next step.
+                </p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-xl bg-secondary p-4">
+                    <p className="text-sm font-semibold text-foreground">{selected.customer_name}</p>
+                    <p className="text-xs text-muted-foreground">{selected.customer_email}</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">
+                      {money(selected.amount_cents, selected.currency)}
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={() => analyzeMutation.mutate(selected.id)}
+                    disabled={analyzeMutation.isPending}
+                    className="w-full rounded-xl"
+                  >
+                    {analyzeMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    {selectedAnalysis ? "Re-analyze case" : "Analyze case"}
+                  </Button>
+
+                  {selectedAnalysis ? (
+                    <div className="space-y-3 rounded-xl border border-border p-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Root cause
+                        </p>
+                        <p className="mt-1 text-sm text-foreground">{selectedAnalysis.root_cause}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Recovery probability
+                        </p>
+                        <div className="mt-2 flex items-center gap-3">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-secondary">
+                            <div
+                              className="bg-brand-gradient h-full rounded-full"
+                              style={{ width: `${selectedAnalysis.recovery_probability}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-semibold text-foreground">
+                            {selectedAnalysis.recovery_probability}%
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Recommended action
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-primary">
+                          {ACTIONS.find((a) => a.key === selectedAnalysis.recommended_action)?.label ??
+                            selectedAnalysis.recommended_action}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {selectedAnalysis.rationale}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {ACTIONS.map((action) => {
+                      const Icon = action.icon;
+                      const recommended = selectedAnalysis?.recommended_action === action.key;
+                      return (
+                        <Button
+                          key={action.key}
+                          variant={recommended ? "default" : "outline"}
+                          disabled={actionMutation.isPending}
+                          onClick={() =>
+                            actionMutation.mutate({
+                              transactionId: selected.id,
+                              action: action.key,
+                            })
+                          }
+                          className="h-auto justify-start gap-2 rounded-xl px-3 py-3 text-xs font-semibold"
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {action.label}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+              <h2 className="text-base font-semibold text-foreground">Audit log</h2>
+              {logs.length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Every action you take is recorded here.
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-3">
+                  {logs.map((log) => (
+                    <li key={log.id} className="text-sm">
+                      <p className="font-medium capitalize text-foreground">
+                        {log.action.replace(/_/g, " ")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(log.created_at).toLocaleString()} ·{" "}
+                        {(log.details as { outcome?: string })?.outcome ?? log.status}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  );
+}
