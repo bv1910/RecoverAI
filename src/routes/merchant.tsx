@@ -85,6 +85,14 @@ const STATUS_STYLE: Record<string, string> = {
   lost: "bg-muted text-muted-foreground",
 };
 
+const probabilityStyle = (probability: number) =>
+  probability >= 65
+    ? "bg-emerald-500/10 text-emerald-700"
+    : probability >= 35
+      ? "bg-amber-500/15 text-amber-700"
+      : "bg-destructive/10 text-destructive";
+
+
 function StatusPill({ status }: { status: string }) {
   return (
     <span
