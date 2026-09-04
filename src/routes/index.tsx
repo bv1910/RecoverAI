@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PhoneInput, toE164 } from "@/components/phone-input";
 import { DEFAULT_COUNTRY } from "@/lib/countries";
 import type { CountryCode } from "libphonenumber-js";
