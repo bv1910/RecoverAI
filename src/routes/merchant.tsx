@@ -139,9 +139,10 @@ function MerchantDashboard() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
-  const [analyses, setAnalyses] = useState<Record<string, Analysis>>({});
+  const [sweepDone, setSweepDone] = useState(false);
 
   const analyze = useServerFn(analyzeTransaction);
+  const analyzeAll = useServerFn(analyzeOpenCases);
   const act = useServerFn(runRecoveryAction);
 
   useEffect(() => {
@@ -162,6 +163,17 @@ function MerchantDashboard() {
     },
   });
 
+  const { data: analyses = {} } = useQuery({
+    queryKey: ["ai_analyses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_analyses")
+        .select("transaction_id, root_cause, recovery_probability, recommended_action, rationale");
+      if (error) throw error;
+      return Object.fromEntries((data as Analysis[]).map((row) => [row.transaction_id, row]));
+    },
+  });
+
   const { data: logs = [] } = useQuery({
     queryKey: ["audit_logs"],
     queryFn: async () => {
@@ -175,11 +187,28 @@ function MerchantDashboard() {
     },
   });
 
+  const refreshAnalyses = () => {
+    queryClient.invalidateQueries({ queryKey: ["ai_analyses"] });
+    queryClient.invalidateQueries({ queryKey: ["audit_logs"] });
+  };
+
   const analyzeMutation = useMutation({
     mutationFn: (transactionId: string) => analyze({ data: { transactionId } }),
+    onSuccess: refreshAnalyses,
+    onError: (error: Error) => setBanner(error.message),
+  });
+
+  const sweepMutation = useMutation({
+    mutationFn: (onlyMissing: boolean) => analyzeAll({ data: { onlyMissing } }),
     onSuccess: (result) => {
-      setAnalyses((prev) => ({ ...prev, [result.transaction_id]: result }));
-      queryClient.invalidateQueries({ queryKey: ["audit_logs"] });
+      if (result.analyzed > 0) {
+        setBanner(
+          `AI Recovery Agent analyzed ${result.analyzed} failed transaction${
+            result.analyzed === 1 ? "" : "s"
+          }.`,
+        );
+      }
+      refreshAnalyses();
     },
     onError: (error: Error) => setBanner(error.message),
   });
@@ -193,6 +222,18 @@ function MerchantDashboard() {
     },
     onError: (error: Error) => setBanner(error.message),
   });
+
+  // Analyze every unanalyzed failed transaction once the dashboard loads.
+  const unanalyzedCount = transactions.filter(
+    (t) => ["failed", "in_progress", "escalated"].includes(t.status) && !analyses[t.id],
+  ).length;
+
+  useEffect(() => {
+    if (sweepDone || isLoading || unanalyzedCount === 0 || sweepMutation.isPending) return;
+    setSweepDone(true);
+    sweepMutation.mutate(true);
+  }, [sweepDone, isLoading, unanalyzedCount, sweepMutation]);
+
 
   const openCases = transactions.filter((t) =>
     ["failed", "in_progress", "escalated"].includes(t.status),
