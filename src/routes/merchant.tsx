@@ -628,14 +628,7 @@ function MerchantDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {SAMPLE_HISTORY.filter((row) => {
-                  const q = historyQuery.trim().toLowerCase();
-                  if (!q) return true;
-                  return (
-                    row.id.toLowerCase().includes(q) ||
-                    row.status.toLowerCase().includes(q)
-                  );
-                }).map((row) => (
+                {filteredHistory.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-secondary">
                     <td className="px-5 py-3.5 font-mono text-xs text-foreground">
                       {row.id}
