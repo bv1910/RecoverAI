@@ -594,15 +594,26 @@ function MerchantDashboard() {
                 Recent payments across all recovery stages.
               </p>
             </div>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={historyQuery}
-                onChange={(e) => setHistoryQuery(e.target.value)}
-                placeholder="Search by payment ID or status"
-                className="h-9 w-full rounded-xl border border-input bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-64"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={historyQuery}
+                  onChange={(e) => setHistoryQuery(e.target.value)}
+                  placeholder="Search by payment ID or status"
+                  className="h-9 w-full rounded-xl border border-input bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-64"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={downloadHistoryCsv}
+                disabled={filteredHistory.length === 0}
+                className="rounded-xl text-xs"
+              >
+                <Download className="h-4 w-4" />
+                Download report
+              </Button>
             </div>
           </div>
 
