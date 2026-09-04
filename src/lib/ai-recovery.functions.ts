@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
+
+type TransactionRow = Database["public"]["Tables"]["transactions"]["Row"];
+type AuthedClient = SupabaseClient<Database>;
+
 
 export type RecoveryAnalysis = {
   transaction_id: string;
@@ -59,22 +65,13 @@ function fallbackFor(failureCode: string, attempts: number) {
   };
 }
 
-export const analyzeTransaction = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { transactionId: string }) => data)
-  .handler(async ({ data, context }): Promise<RecoveryAnalysis> => {
-    const { supabase, userId } = context;
+async function analyzeCase(
+  supabase: AuthedClient,
+  userId: string,
+  tx: TransactionRow,
+): Promise<RecoveryAnalysis> {
+  let result = fallbackFor(tx.failure_code, tx.attempts);
 
-    const { data: tx, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("id", data.transactionId)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    if (!tx) throw new Error("Case not found");
-
-    let result = fallbackFor(tx.failure_code, tx.attempts);
 
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (apiKey) {
@@ -171,8 +168,68 @@ export const analyzeTransaction = createServerFn({ method: "POST" })
       },
     });
 
-    return { transaction_id: tx.id, ...result };
+  return { transaction_id: tx.id, ...result };
+}
+
+export const analyzeTransaction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { transactionId: string }) => data)
+  .handler(async ({ data, context }): Promise<RecoveryAnalysis> => {
+    const { supabase, userId } = context;
+
+    const { data: tx, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("id", data.transactionId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!tx) throw new Error("Case not found");
+
+    return analyzeCase(supabase, userId, tx);
   });
+
+/**
+ * Analyzes every unresolved transaction for the signed-in merchant.
+ * `onlyMissing` skips cases that already have a stored analysis.
+ */
+export const analyzeOpenCases = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { onlyMissing?: boolean } | undefined) => data ?? {})
+  .handler(async ({ data, context }): Promise<{ analyzed: number; analyses: RecoveryAnalysis[] }> => {
+    const { supabase, userId } = context;
+
+    const { data: txs, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .in("status", ["failed", "in_progress", "escalated"])
+      .order("failed_at", { ascending: false })
+      .limit(25);
+    if (error) throw new Error(error.message);
+
+    let pending = txs ?? [];
+
+    if (data.onlyMissing !== false) {
+      const { data: existing } = await supabase
+        .from("ai_analyses")
+        .select("transaction_id")
+        .eq("merchant_id", userId);
+      const done = new Set((existing ?? []).map((row) => row.transaction_id));
+      pending = pending.filter((tx) => !done.has(tx.id));
+    }
+
+    const analyses: RecoveryAnalysis[] = [];
+    for (const tx of pending) {
+      try {
+        analyses.push(await analyzeCase(supabase, userId, tx));
+      } catch {
+        // Skip a single failing case instead of aborting the whole sweep.
+      }
+    }
+
+    return { analyzed: analyses.length, analyses };
+  });
+
 
 export const runRecoveryAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

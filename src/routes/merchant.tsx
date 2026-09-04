@@ -17,7 +17,11 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { analyzeTransaction, runRecoveryAction } from "@/lib/ai-recovery.functions";
+import {
+  analyzeOpenCases,
+  analyzeTransaction,
+  runRecoveryAction,
+} from "@/lib/ai-recovery.functions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/merchant")({
@@ -85,6 +89,14 @@ const STATUS_STYLE: Record<string, string> = {
   lost: "bg-muted text-muted-foreground",
 };
 
+const probabilityStyle = (probability: number) =>
+  probability >= 65
+    ? "bg-emerald-500/10 text-emerald-700"
+    : probability >= 35
+      ? "bg-amber-500/15 text-amber-700"
+      : "bg-destructive/10 text-destructive";
+
+
 function StatusPill({ status }: { status: string }) {
   return (
     <span
@@ -139,9 +151,10 @@ function MerchantDashboard() {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
-  const [analyses, setAnalyses] = useState<Record<string, Analysis>>({});
+  const [sweepDone, setSweepDone] = useState(false);
 
   const analyze = useServerFn(analyzeTransaction);
+  const analyzeAll = useServerFn(analyzeOpenCases);
   const act = useServerFn(runRecoveryAction);
 
   useEffect(() => {
@@ -162,6 +175,17 @@ function MerchantDashboard() {
     },
   });
 
+  const { data: analyses = {} } = useQuery({
+    queryKey: ["ai_analyses"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ai_analyses")
+        .select("transaction_id, root_cause, recovery_probability, recommended_action, rationale");
+      if (error) throw error;
+      return Object.fromEntries((data as Analysis[]).map((row) => [row.transaction_id, row]));
+    },
+  });
+
   const { data: logs = [] } = useQuery({
     queryKey: ["audit_logs"],
     queryFn: async () => {
@@ -175,11 +199,28 @@ function MerchantDashboard() {
     },
   });
 
+  const refreshAnalyses = () => {
+    queryClient.invalidateQueries({ queryKey: ["ai_analyses"] });
+    queryClient.invalidateQueries({ queryKey: ["audit_logs"] });
+  };
+
   const analyzeMutation = useMutation({
     mutationFn: (transactionId: string) => analyze({ data: { transactionId } }),
+    onSuccess: refreshAnalyses,
+    onError: (error: Error) => setBanner(error.message),
+  });
+
+  const sweepMutation = useMutation({
+    mutationFn: (onlyMissing: boolean) => analyzeAll({ data: { onlyMissing } }),
     onSuccess: (result) => {
-      setAnalyses((prev) => ({ ...prev, [result.transaction_id]: result }));
-      queryClient.invalidateQueries({ queryKey: ["audit_logs"] });
+      if (result.analyzed > 0) {
+        setBanner(
+          `AI Recovery Agent analyzed ${result.analyzed} failed transaction${
+            result.analyzed === 1 ? "" : "s"
+          }.`,
+        );
+      }
+      refreshAnalyses();
     },
     onError: (error: Error) => setBanner(error.message),
   });
@@ -193,6 +234,18 @@ function MerchantDashboard() {
     },
     onError: (error: Error) => setBanner(error.message),
   });
+
+  // Analyze every unanalyzed failed transaction once the dashboard loads.
+  const unanalyzedCount = transactions.filter(
+    (t) => ["failed", "in_progress", "escalated"].includes(t.status) && !analyses[t.id],
+  ).length;
+
+  useEffect(() => {
+    if (sweepDone || isLoading || unanalyzedCount === 0 || sweepMutation.isPending) return;
+    setSweepDone(true);
+    sweepMutation.mutate(true);
+  }, [sweepDone, isLoading, unanalyzedCount, sweepMutation]);
+
 
   const openCases = transactions.filter((t) =>
     ["failed", "in_progress", "escalated"].includes(t.status),
@@ -273,12 +326,28 @@ function MerchantDashboard() {
 
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
           <section className="rounded-2xl border border-border bg-card shadow-soft">
-            <div className="border-b border-border px-5 py-4">
-              <h2 className="text-base font-semibold text-foreground">Failed transactions</h2>
-              <p className="text-xs text-muted-foreground">
-                Select a case to run the AI Recovery Agent.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Failed transactions</h2>
+                <p className="text-xs text-muted-foreground">
+                  Every failed payment is scored by the AI Recovery Agent.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs"
+                disabled={sweepMutation.isPending}
+                onClick={() => sweepMutation.mutate(false)}
+              >
+                {sweepMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Bot className="h-4 w-4" />
+                )}
+                Re-analyze all
+              </Button>
             </div>
+
 
             {isLoading ? (
               <p className="px-5 py-10 text-sm text-muted-foreground">Loading cases…</p>
@@ -304,6 +373,27 @@ function MerchantDashboard() {
                             {tx.failure_reason} · {tx.attempts} attempt
                             {tx.attempts === 1 ? "" : "s"}
                           </p>
+                          {analyses[tx.id] ? (
+                            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${probabilityStyle(
+                                  analyses[tx.id]!.recovery_probability,
+                                )}`}
+                              >
+                                <Bot className="h-3 w-3" />
+                                {analyses[tx.id]!.recovery_probability}% recoverable
+                              </span>
+                              <span className="text-muted-foreground">
+                                Safest:{" "}
+                                {ACTIONS.find((a) => a.key === analyses[tx.id]!.recommended_action)
+                                  ?.label ?? analyses[tx.id]!.recommended_action}
+                              </span>
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {sweepMutation.isPending ? "AI analyzing…" : "Not analyzed yet"}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <StatusPill status={tx.status} />
@@ -311,6 +401,7 @@ function MerchantDashboard() {
                             {money(tx.amount_cents, tx.currency)}
                           </span>
                         </div>
+
                       </button>
                     </li>
                   );
@@ -380,7 +471,7 @@ function MerchantDashboard() {
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Recommended action
+                          Safest recommended action
                         </p>
                         <p className="mt-1 text-sm font-semibold text-primary">
                           {ACTIONS.find((a) => a.key === selectedAnalysis.recommended_action)?.label ??
