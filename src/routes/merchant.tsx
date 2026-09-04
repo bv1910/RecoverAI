@@ -17,7 +17,11 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { analyzeTransaction, runRecoveryAction } from "@/lib/ai-recovery.functions";
+import {
+  analyzeOpenCases,
+  analyzeTransaction,
+  runRecoveryAction,
+} from "@/lib/ai-recovery.functions";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/merchant")({
