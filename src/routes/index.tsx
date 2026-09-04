@@ -209,12 +209,27 @@ function LoginPage() {
     setMessage(null);
     setLoading("verify");
 
+    if (smsLive) {
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        phone: pendingPhone,
+        token,
+        type: "sms",
+      });
+      setLoading(null);
+      if (verifyError) {
+        setCode("");
+        setMessage({ tone: "error", text: verifyError.message });
+      }
+      return;
+    }
+
     if (token !== DEMO_OTP) {
       setLoading(null);
       setCode("");
       setMessage({ tone: "error", text: "That code is incorrect. Try again." });
       return;
     }
+
 
     const { email, password } = demoIdentity(pendingPhone);
     let { error } = await supabase.auth.signInWithPassword({ email, password });
