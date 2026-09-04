@@ -123,6 +123,62 @@ export type Database = {
         }
         Relationships: []
       }
+      recovery_payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          error_message: string | null
+          id: string
+          order_id: string
+          payment_id: string | null
+          provider: string
+          signature: string | null
+          status: string
+          transaction_id: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          id?: string
+          order_id: string
+          payment_id?: string | null
+          provider?: string
+          signature?: string | null
+          status?: string
+          transaction_id: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          error_message?: string | null
+          id?: string
+          order_id?: string
+          payment_id?: string | null
+          provider?: string
+          signature?: string | null
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recovery_payments_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount_cents: number
