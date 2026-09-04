@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
+
+type TransactionRow = Database["public"]["Tables"]["transactions"]["Row"];
+type AuthedClient = SupabaseClient<Database>;
+
 
 export type RecoveryAnalysis = {
   transaction_id: string;
