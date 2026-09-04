@@ -7,6 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput, toE164 } from "@/components/phone-input";
+import { DEFAULT_COUNTRY } from "@/lib/countries";
+import type { CountryCode } from "libphonenumber-js";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -32,6 +35,7 @@ export const Route = createFileRoute("/")({
 type Role = "merchant" | "customer";
 
 const ROLE_KEY = "recoverai.role";
+const PHONE_KEY = "recoverai.phone";
 
 function GoogleMark() {
   return (
@@ -61,6 +65,7 @@ function LoginPage() {
   const [role, setRole] = useState<Role>("merchant");
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [value, setValue] = useState("");
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [loading, setLoading] = useState<"google" | "otp" | null>(null);
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
 
@@ -70,23 +75,46 @@ function LoginPage() {
   useEffect(() => {
     let active = true;
 
-    const settle = async (userId: string, email?: string | null, name?: string | null) => {
+    const settle = async (
+      userId: string,
+      email?: string | null,
+      name?: string | null,
+      phone?: string | null,
+    ) => {
       const stored = (localStorage.getItem(ROLE_KEY) as Role | null) ?? "customer";
       await supabase
         .from("profiles")
-        .upsert({ id: userId, email: email ?? null, full_name: name ?? null, role: stored });
+        .upsert({
+          id: userId,
+          email: email ?? null,
+          full_name: name ?? null,
+          role: stored,
+          phone_e164: phone ?? localStorage.getItem(PHONE_KEY),
+        });
       if (!active) return;
       navigate({ to: routeForRole(stored), replace: true });
     };
 
     supabase.auth.getSession().then(({ data }) => {
       const user = data.session?.user;
-      if (user) void settle(user.id, user.email, user.user_metadata?.['full_name'] as string | undefined);
+      if (user)
+        void settle(
+          user.id,
+          user.email,
+          user.user_metadata?.['full_name'] as string | undefined,
+          user.phone ?? null,
+        );
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user;
-      if (user) void settle(user.id, user.email, user.user_metadata?.['full_name'] as string | undefined);
+      if (user)
+        void settle(
+          user.id,
+          user.email,
+          user.user_metadata?.['full_name'] as string | undefined,
+          user.phone ?? null,
+        );
     });
 
     return () => {
@@ -114,6 +142,19 @@ function LoginPage() {
     event.preventDefault();
     if (!value.trim()) return;
     setMessage(null);
+
+    let phoneE164: string | null = null;
+    if (method === "phone") {
+      phoneE164 = toE164(value, country);
+      if (!phoneE164) {
+        setMessage({
+          tone: "error",
+          text: "Enter a valid phone number for the selected country.",
+        });
+        return;
+      }
+    }
+
     setLoading("otp");
     localStorage.setItem(ROLE_KEY, role);
     const { error } =
@@ -122,8 +163,9 @@ function LoginPage() {
             email: value.trim(),
             options: { emailRedirectTo: window.location.origin },
           })
-        : await supabase.auth.signInWithOtp({ phone: value.trim() });
+        : await supabase.auth.signInWithOtp({ phone: phoneE164! });
     setLoading(null);
+    if (!error && phoneE164) localStorage.setItem(PHONE_KEY, phoneE164);
     setMessage(
       error
         ? { tone: "error", text: error.message }
@@ -132,7 +174,7 @@ function LoginPage() {
             text:
               method === "email"
                 ? "Check your inbox for a secure sign-in link."
-                : "We sent a one-time code to your phone.",
+                : `We sent a one-time code to ${phoneE164}.`,
           },
     );
   };
@@ -273,16 +315,27 @@ function LoginPage() {
           </div>
 
           <form onSubmit={handleOtp} className="mt-4 space-y-3">
-            <Input
-              type={method === "email" ? "email" : "tel"}
-              inputMode={method === "email" ? "email" : "tel"}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              placeholder={method === "email" ? "you@company.com" : "+1 555 000 1234"}
-              aria-label={method === "email" ? "Email address" : "Phone number"}
-              className="h-12 rounded-xl"
-              required
-            />
+            {method === "email" ? (
+              <Input
+                type="email"
+                inputMode="email"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="you@company.com"
+                aria-label="Email address"
+                maxLength={255}
+                className="h-12 rounded-xl"
+                required
+              />
+            ) : (
+              <PhoneInput
+                country={country}
+                onCountryChange={setCountry}
+                value={value}
+                onValueChange={setValue}
+                disabled={loading !== null}
+              />
+            )}
             <Button
               type="submit"
               disabled={loading !== null}
