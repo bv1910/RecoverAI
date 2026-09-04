@@ -283,6 +283,13 @@ function MerchantDashboard() {
     return row.id.toLowerCase().includes(q) || row.status.toLowerCase().includes(q);
   });
 
+  const summary = {
+    total: SAMPLE_HISTORY.length,
+    totalAmount: SAMPLE_HISTORY.reduce((sum, r) => sum + r.amount_cents, 0),
+    successful: SAMPLE_HISTORY.filter((r) => r.status === "recovered").length,
+    failed: SAMPLE_HISTORY.filter((r) => r.status === "failed").length,
+  };
+
   const downloadHistoryCsv = () => {
     const header = ["Payment ID", "Amount", "Currency", "Date", "Status"];
     const lines = filteredHistory.map((row) => [
