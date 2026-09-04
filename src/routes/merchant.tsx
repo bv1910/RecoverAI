@@ -277,6 +277,35 @@ function MerchantDashboard() {
     .reduce((sum, t) => sum + t.amount_cents, 0);
   const rate = atRisk + recovered > 0 ? Math.round((recovered / (atRisk + recovered)) * 100) : 0;
 
+  const filteredHistory = SAMPLE_HISTORY.filter((row) => {
+    const q = historyQuery.trim().toLowerCase();
+    if (!q) return true;
+    return row.id.toLowerCase().includes(q) || row.status.toLowerCase().includes(q);
+  });
+
+  const downloadHistoryCsv = () => {
+    const header = ["Payment ID", "Amount", "Currency", "Date", "Status"];
+    const lines = filteredHistory.map((row) => [
+      row.id,
+      (row.amount_cents / 100).toFixed(2),
+      row.currency,
+      new Date(row.date).toISOString(),
+      row.status,
+    ]);
+    const csv = [header, ...lines]
+      .map((cols) => cols.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "transaction-history.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const selected = transactions.find((t) => t.id === selectedId) ?? null;
   const selectedAnalysis = selected ? analyses[selected.id] : undefined;
 
