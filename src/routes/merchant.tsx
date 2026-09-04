@@ -283,6 +283,13 @@ function MerchantDashboard() {
     return row.id.toLowerCase().includes(q) || row.status.toLowerCase().includes(q);
   });
 
+  const summary = {
+    total: SAMPLE_HISTORY.length,
+    totalAmount: SAMPLE_HISTORY.reduce((sum, r) => sum + r.amount_cents, 0),
+    successful: SAMPLE_HISTORY.filter((r) => r.status === "recovered").length,
+    failed: SAMPLE_HISTORY.filter((r) => r.status === "failed").length,
+  };
+
   const downloadHistoryCsv = () => {
     const header = ["Payment ID", "Amount", "Currency", "Date", "Status"];
     const lines = filteredHistory.map((row) => [
@@ -585,6 +592,45 @@ function MerchantDashboard() {
             </div>
           </section>
         </div>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total transactions
+            </p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">
+              {summary.total}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">All recorded payments</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total amount
+            </p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-foreground">
+              {money(summary.totalAmount)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Across all transactions</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Successful payments
+            </p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-emerald-700">
+              {summary.successful}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Recovered and settled</p>
+          </div>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Failed payments
+            </p>
+            <p className="mt-3 text-3xl font-semibold tracking-tight text-destructive">
+              {summary.failed}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">Declined or errored</p>
+          </div>
+        </section>
 
         <section className="rounded-2xl border border-border bg-card shadow-soft">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
