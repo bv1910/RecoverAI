@@ -535,6 +535,52 @@ function MerchantDashboard() {
             </div>
           </section>
         </div>
+
+        <section className="rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Transaction history</h2>
+              <p className="text-xs text-muted-foreground">
+                Recent payments across all recovery stages.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-5 py-3 font-semibold">Payment ID</th>
+                  <th className="px-5 py-3 font-semibold">Amount</th>
+                  <th className="px-5 py-3 font-semibold">Date</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {SAMPLE_HISTORY.map((row) => (
+                  <tr key={row.id} className="transition-colors hover:bg-secondary">
+                    <td className="px-5 py-3.5 font-mono text-xs text-foreground">
+                      {row.id}
+                    </td>
+                    <td className="px-5 py-3.5 font-semibold text-foreground">
+                      {money(row.amount_cents, row.currency)}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      {new Date(row.date).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
   );
