@@ -65,22 +65,13 @@ function fallbackFor(failureCode: string, attempts: number) {
   };
 }
 
-export const analyzeTransaction = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { transactionId: string }) => data)
-  .handler(async ({ data, context }): Promise<RecoveryAnalysis> => {
-    const { supabase, userId } = context;
+async function analyzeCase(
+  supabase: AuthedClient,
+  userId: string,
+  tx: TransactionRow,
+): Promise<RecoveryAnalysis> {
+  let result = fallbackFor(tx.failure_code, tx.attempts);
 
-    const { data: tx, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("id", data.transactionId)
-      .maybeSingle();
-
-    if (error) throw new Error(error.message);
-    if (!tx) throw new Error("Case not found");
-
-    let result = fallbackFor(tx.failure_code, tx.attempts);
 
     const apiKey = process.env["LOVABLE_API_KEY"];
     if (apiKey) {
