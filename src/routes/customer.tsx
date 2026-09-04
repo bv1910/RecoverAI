@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
@@ -7,7 +7,12 @@ import {
   CreditCard,
   Loader2,
   Sparkles,
+  Wand2,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+
+import { loadDemoCases } from "@/lib/demo-cases.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -66,7 +71,23 @@ export const Route = createFileRoute("/customer")({
 
 function CustomerPortal() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loadingDemo, setLoadingDemo] = useState(false);
+  const loadDemo = useServerFn(loadDemoCases);
+
+  const handleLoadDemo = async () => {
+    setLoadingDemo(true);
+    try {
+      const result = await loadDemo();
+      toast.success(result.message);
+      await queryClient.invalidateQueries({ queryKey: ["customer-transactions"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not load demo cases");
+    } finally {
+      setLoadingDemo(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -142,6 +163,19 @@ function CustomerPortal() {
               <p className="mt-1 text-xs text-muted-foreground">
                 No outstanding payments were found for your account.
               </p>
+              <Button
+                variant="outline"
+                onClick={handleLoadDemo}
+                disabled={loadingDemo}
+                className="mt-4 rounded-xl"
+              >
+                {loadingDemo ? (
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="mr-1 h-4 w-4" />
+                )}
+                Load demo cases into my account
+              </Button>
             </div>
           ) : (
             <ul className="mt-6 divide-y divide-border">
