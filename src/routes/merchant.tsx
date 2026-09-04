@@ -96,6 +96,21 @@ const probabilityStyle = (probability: number) =>
       ? "bg-amber-500/15 text-amber-700"
       : "bg-destructive/10 text-destructive";
 
+const SAMPLE_HISTORY: {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  date: string;
+  status: string;
+}[] = [
+  { id: "pay_4f9c21a0", amount_cents: 8999, currency: "USD", date: "2026-09-03T14:22:00Z", status: "recovered" },
+  { id: "pay_7d1e88b2", amount_cents: 14900, currency: "USD", date: "2026-09-02T09:10:00Z", status: "failed" },
+  { id: "pay_2a6c54ef", amount_cents: 4200, currency: "USD", date: "2026-09-01T17:45:00Z", status: "in_progress" },
+  { id: "pay_9b0d31fa", amount_cents: 12500, currency: "USD", date: "2026-08-30T11:05:00Z", status: "recovered" },
+  { id: "pay_c3481e7d", amount_cents: 6700, currency: "USD", date: "2026-08-29T20:30:00Z", status: "escalated" },
+  { id: "pay_5e2f90bc", amount_cents: 9800, currency: "USD", date: "2026-08-28T08:15:00Z", status: "recovered" },
+];
+
 
 function StatusPill({ status }: { status: string }) {
   return (
@@ -535,6 +550,52 @@ function MerchantDashboard() {
             </div>
           </section>
         </div>
+
+        <section className="rounded-2xl border border-border bg-card shadow-soft">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Transaction history</h2>
+              <p className="text-xs text-muted-foreground">
+                Recent payments across all recovery stages.
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-5 py-3 font-semibold">Payment ID</th>
+                  <th className="px-5 py-3 font-semibold">Amount</th>
+                  <th className="px-5 py-3 font-semibold">Date</th>
+                  <th className="px-5 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {SAMPLE_HISTORY.map((row) => (
+                  <tr key={row.id} className="transition-colors hover:bg-secondary">
+                    <td className="px-5 py-3.5 font-mono text-xs text-foreground">
+                      {row.id}
+                    </td>
+                    <td className="px-5 py-3.5 font-semibold text-foreground">
+                      {money(row.amount_cents, row.currency)}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      {new Date(row.date).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <StatusPill status={row.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </main>
     </div>
   );
