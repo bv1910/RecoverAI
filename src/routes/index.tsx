@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { PhoneInput, toE164 } from "@/components/phone-input";
 import { DEFAULT_COUNTRY } from "@/lib/countries";
 import type { CountryCode } from "libphonenumber-js";
@@ -66,7 +67,9 @@ function LoginPage() {
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [value, setValue] = useState("");
   const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
-  const [loading, setLoading] = useState<"google" | "otp" | null>(null);
+  const [loading, setLoading] = useState<"google" | "otp" | "verify" | null>(null);
+  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
 
   const routeForRole = (r: Role) => (r === "merchant" ? "/merchant" : "/customer");
@@ -138,14 +141,28 @@ function LoginPage() {
     if (result.redirected) return;
   };
 
+  const sendPhoneCode = async (phoneE164: string) => {
+    setLoading("otp");
+    const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
+    setLoading(null);
+    if (error) {
+      setMessage({ tone: "error", text: error.message });
+      return false;
+    }
+    localStorage.setItem(PHONE_KEY, phoneE164);
+    setPendingPhone(phoneE164);
+    setCode("");
+    setMessage({ tone: "info", text: `We sent a 6-digit code to ${phoneE164}.` });
+    return true;
+  };
+
   const handleOtp = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!value.trim()) return;
     setMessage(null);
 
-    let phoneE164: string | null = null;
     if (method === "phone") {
-      phoneE164 = toE164(value, country);
+      const phoneE164 = toE164(value, country);
       if (!phoneE164) {
         setMessage({
           tone: "error",
@@ -153,31 +170,43 @@ function LoginPage() {
         });
         return;
       }
+      localStorage.setItem(ROLE_KEY, role);
+      await sendPhoneCode(phoneE164);
+      return;
     }
 
     setLoading("otp");
     localStorage.setItem(ROLE_KEY, role);
-    const { error } =
-      method === "email"
-        ? await supabase.auth.signInWithOtp({
-            email: value.trim(),
-            options: { emailRedirectTo: window.location.origin },
-          })
-        : await supabase.auth.signInWithOtp({ phone: phoneE164! });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: value.trim(),
+      options: { emailRedirectTo: window.location.origin },
+    });
     setLoading(null);
-    if (!error && phoneE164) localStorage.setItem(PHONE_KEY, phoneE164);
     setMessage(
       error
         ? { tone: "error", text: error.message }
-        : {
-            tone: "info",
-            text:
-              method === "email"
-                ? "Check your inbox for a secure sign-in link."
-                : `We sent a one-time code to ${phoneE164}.`,
-          },
+        : { tone: "info", text: "Check your inbox for a secure sign-in link." },
     );
   };
+
+  const handleVerify = async (token: string) => {
+    if (!pendingPhone || token.length !== 6) return;
+    setMessage(null);
+    setLoading("verify");
+    const { error } = await supabase.auth.verifyOtp({
+      phone: pendingPhone,
+      token,
+      type: "sms",
+    });
+    setLoading(null);
+    if (error) {
+      setCode("");
+      setMessage({ tone: "error", text: error.message || "That code is invalid or expired." });
+      return;
+    }
+    // onAuthStateChange handles profile upsert + redirect.
+  };
+
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
@@ -285,66 +314,123 @@ function LoginPage() {
             <span className="h-px flex-1 bg-border" />
           </div>
 
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
-            {([
-              { key: "email" as const, label: "Email", icon: Mail },
-              { key: "phone" as const, label: "Phone", icon: Phone },
-            ]).map((tab) => {
-              const Icon = tab.icon;
-              const active = method === tab.key;
-              return (
+          {pendingPhone ? (
+            <div className="mt-4 space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Enter the 6-digit code</Label>
+                <p className="mt-1 text-xs text-muted-foreground">Sent to {pendingPhone}</p>
+              </div>
+              <InputOTP
+                maxLength={6}
+                value={code}
+                onChange={(v) => {
+                  setCode(v);
+                  if (v.length === 6) void handleVerify(v);
+                }}
+                disabled={loading !== null}
+              >
+                <InputOTPGroup>
+                  {[0, 1, 2, 3, 4, 5].map((i) => (
+                    <InputOTPSlot key={i} index={i} />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+              <Button
+                type="button"
+                onClick={() => void handleVerify(code)}
+                disabled={loading !== null || code.length !== 6}
+                className="h-12 w-full rounded-xl text-sm font-semibold"
+              >
+                {loading === "verify" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Verify and continue
+              </Button>
+              <div className="flex items-center justify-between text-xs">
                 <button
-                  key={tab.key}
                   type="button"
+                  className="text-muted-foreground underline-offset-4 hover:underline"
                   onClick={() => {
-                    setMethod(tab.key);
-                    setValue("");
+                    setPendingPhone(null);
+                    setCode("");
                     setMessage(null);
                   }}
-                  className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-card text-foreground shadow-soft"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
                 >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
+                  Use a different number
                 </button>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  disabled={loading !== null}
+                  className="font-medium text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+                  onClick={() => void sendPhoneCode(pendingPhone)}
+                >
+                  Resend code
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+                {([
+                  { key: "email" as const, label: "Email", icon: Mail },
+                  { key: "phone" as const, label: "Phone", icon: Phone },
+                ]).map((tab) => {
+                  const Icon = tab.icon;
+                  const active = method === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => {
+                        setMethod(tab.key);
+                        setValue("");
+                        setMessage(null);
+                      }}
+                      className={`flex items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-card text-foreground shadow-soft"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-          <form onSubmit={handleOtp} className="mt-4 space-y-3">
-            {method === "email" ? (
-              <Input
-                type="email"
-                inputMode="email"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="you@company.com"
-                aria-label="Email address"
-                maxLength={255}
-                className="h-12 rounded-xl"
-                required
-              />
-            ) : (
-              <PhoneInput
-                country={country}
-                onCountryChange={setCountry}
-                value={value}
-                onValueChange={setValue}
-                disabled={loading !== null}
-              />
-            )}
-            <Button
-              type="submit"
-              disabled={loading !== null}
-              className="h-12 w-full rounded-xl text-sm font-semibold"
-            >
-              {loading === "otp" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Continue with {method === "email" ? "email" : "phone"}
-            </Button>
-          </form>
+              <form onSubmit={handleOtp} className="mt-4 space-y-3">
+                {method === "email" ? (
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    placeholder="you@company.com"
+                    aria-label="Email address"
+                    maxLength={255}
+                    className="h-12 rounded-xl"
+                    required
+                  />
+                ) : (
+                  <PhoneInput
+                    country={country}
+                    onCountryChange={setCountry}
+                    value={value}
+                    onValueChange={setValue}
+                    disabled={loading !== null}
+                  />
+                )}
+                <Button
+                  type="submit"
+                  disabled={loading !== null}
+                  className="h-12 w-full rounded-xl text-sm font-semibold"
+                >
+                  {loading === "otp" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Continue with {method === "email" ? "email" : "phone"}
+                </Button>
+              </form>
+            </>
+          )}
+
 
           {message ? (
             <p
