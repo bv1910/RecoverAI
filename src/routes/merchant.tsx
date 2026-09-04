@@ -471,7 +471,7 @@ function MerchantDashboard() {
                       </div>
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                          Recommended action
+                          Safest recommended action
                         </p>
                         <p className="mt-1 text-sm font-semibold text-primary">
                           {ACTIONS.find((a) => a.key === selectedAnalysis.recommended_action)?.label ??
