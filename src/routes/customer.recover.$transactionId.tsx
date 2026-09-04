@@ -18,31 +18,8 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
-import {
-  createRecoveryOrder,
-  verifyRecoveryPayment,
-} from "@/lib/razorpay.functions";
+import { simulateRecoveryPayment } from "@/lib/simulated-payment.functions";
 import { Button } from "@/components/ui/button";
-
-const RAZORPAY_SRC = "https://checkout.razorpay.com/v1/checkout.js";
-
-function loadRazorpay(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const w = window as any;
-    if (w.Razorpay) return resolve(w.Razorpay);
-    const existing = document.querySelector<HTMLScriptElement>(
-      `script[src="${RAZORPAY_SRC}"]`,
-    );
-    const script = existing ?? document.createElement("script");
-    script.src = RAZORPAY_SRC;
-    script.async = true;
-    script.addEventListener("load", () => resolve((window as any).Razorpay));
-    script.addEventListener("error", () =>
-      reject(new Error("Could not load the secure checkout. Check your connection.")),
-    );
-    if (!existing) document.body.appendChild(script);
-  });
-}
 
 
 type Transaction = {
@@ -93,8 +70,7 @@ function RecoveryPage() {
   const navigate = useNavigate();
   const params = useParams({ from: "/customer/recover/$transactionId" });
   const queryClient = useQueryClient();
-  const createOrder = useServerFn(createRecoveryOrder);
-  const verifyPayment = useServerFn(verifyRecoveryPayment);
+  const payNow = useServerFn(simulateRecoveryPayment);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [result, setResult] = useState<
@@ -131,51 +107,7 @@ function RecoveryPage() {
   const payMutation = useMutation({
     mutationFn: async () => {
       setResult(null);
-      const Razorpay = await loadRazorpay();
-      const order = await createOrder({
-        data: { transactionId: params.transactionId },
-      });
-
-      return await new Promise<{ status: string }>((resolve, reject) => {
-        const checkout = new Razorpay({
-          key: order.keyId,
-          amount: order.amount,
-          currency: order.currency,
-          order_id: order.orderId,
-          name: "RecoverAI",
-          description: "Recovery payment",
-          prefill: { name: order.customerName, email: order.customerEmail },
-          theme: { color: "#4f46e5" },
-          modal: {
-            ondismiss: () =>
-              reject(new Error("Checkout closed before the payment completed.")),
-          },
-          handler: (response: {
-            razorpay_order_id: string;
-            razorpay_payment_id: string;
-            razorpay_signature: string;
-          }) => {
-            verifyPayment({
-              data: {
-                transactionId: params.transactionId,
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-              },
-            })
-              .then(resolve)
-              .catch(reject);
-          },
-        });
-        checkout.on("payment.failed", (event: any) =>
-          reject(
-            new Error(
-              event?.error?.description ?? "The payment could not be completed.",
-            ),
-          ),
-        );
-        checkout.open();
-      });
+      return await payNow({ data: { transactionId: params.transactionId } });
     },
     onSuccess: (data) => {
       setResult({ type: "success", status: data.status });
@@ -326,13 +258,13 @@ function RecoveryPage() {
                     <Lock className="h-4 w-4" />
                   )}
                   {payMutation.isPending
-                    ? "Opening secure checkout…"
+                    ? "Processing payment…"
                     : `Pay now · ${money(tx?.amount_cents ?? 0, tx?.currency)}`}
                 </Button>
 
                 <p className="text-center text-xs text-muted-foreground">
-                  You'll be redirected to Razorpay's secure checkout (test mode).
-                  Card details never touch our servers.
+                  Demo mode: this simulates a successful charge and marks the
+                  case as recovered. No real card is charged.
                 </p>
               </div>
 
