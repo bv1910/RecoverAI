@@ -102,6 +102,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          phone_e164: string | null
           role: string
           updated_at: string
         }
@@ -110,6 +111,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          phone_e164?: string | null
           role?: string
           updated_at?: string
         }
@@ -118,6 +120,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          phone_e164?: string | null
           role?: string
           updated_at?: string
         }
@@ -187,6 +190,7 @@ export type Database = {
           currency: string
           customer_email: string
           customer_name: string
+          customer_phone_e164: string | null
           failed_at: string
           failure_code: string
           failure_reason: string
@@ -203,6 +207,7 @@ export type Database = {
           currency?: string
           customer_email: string
           customer_name: string
+          customer_phone_e164?: string | null
           failed_at?: string
           failure_code?: string
           failure_reason?: string
@@ -219,6 +224,7 @@ export type Database = {
           currency?: string
           customer_email?: string
           customer_name?: string
+          customer_phone_e164?: string | null
           failed_at?: string
           failure_code?: string
           failure_reason?: string

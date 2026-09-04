@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788517115699,
+      "tag": "0000_add_phone_e164_columns",
+      "breakpoints": true
+    }
+  ]
+}
