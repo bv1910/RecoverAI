@@ -87,6 +87,7 @@ const STATUS_STYLE: Record<string, string> = {
   recovered: "bg-emerald-500/10 text-emerald-700",
   escalated: "bg-amber-500/15 text-amber-700",
   lost: "bg-muted text-muted-foreground",
+  refund: "bg-sky-500/10 text-sky-700",
 };
 
 const probabilityStyle = (probability: number) =>
@@ -109,6 +110,8 @@ const SAMPLE_HISTORY: {
   { id: "pay_9b0d31fa", amount_cents: 12500, currency: "USD", date: "2026-08-30T11:05:00Z", status: "recovered" },
   { id: "pay_c3481e7d", amount_cents: 6700, currency: "USD", date: "2026-08-29T20:30:00Z", status: "escalated" },
   { id: "pay_5e2f90bc", amount_cents: 9800, currency: "USD", date: "2026-08-28T08:15:00Z", status: "recovered" },
+  { id: "pay_8a1d6f3c", amount_cents: 5400, currency: "USD", date: "2026-08-27T13:40:00Z", status: "refund" },
+  { id: "pay_6b4e2d90", amount_cents: 11200, currency: "USD", date: "2026-08-26T10:20:00Z", status: "failed" },
 ];
 
 
