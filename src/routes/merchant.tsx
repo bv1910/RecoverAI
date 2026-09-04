@@ -680,6 +680,7 @@ function MerchantDashboard() {
                   <th className="px-5 py-3 font-semibold">Amount</th>
                   <th className="px-5 py-3 font-semibold">Date</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
