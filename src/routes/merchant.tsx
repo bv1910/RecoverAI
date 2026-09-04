@@ -25,6 +25,13 @@ import {
   runRecoveryAction,
 } from "@/lib/ai-recovery.functions";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/merchant")({
   head: () => ({
@@ -105,15 +112,16 @@ const SAMPLE_HISTORY: {
   currency: string;
   date: string;
   status: string;
+  method: string;
 }[] = [
-  { id: "pay_4f9c21a0", amount_cents: 8999, currency: "USD", date: "2026-09-03T14:22:00Z", status: "recovered" },
-  { id: "pay_7d1e88b2", amount_cents: 14900, currency: "USD", date: "2026-09-02T09:10:00Z", status: "failed" },
-  { id: "pay_2a6c54ef", amount_cents: 4200, currency: "USD", date: "2026-09-01T17:45:00Z", status: "in_progress" },
-  { id: "pay_9b0d31fa", amount_cents: 12500, currency: "USD", date: "2026-08-30T11:05:00Z", status: "recovered" },
-  { id: "pay_c3481e7d", amount_cents: 6700, currency: "USD", date: "2026-08-29T20:30:00Z", status: "escalated" },
-  { id: "pay_5e2f90bc", amount_cents: 9800, currency: "USD", date: "2026-08-28T08:15:00Z", status: "recovered" },
-  { id: "pay_8a1d6f3c", amount_cents: 5400, currency: "USD", date: "2026-08-27T13:40:00Z", status: "refund" },
-  { id: "pay_6b4e2d90", amount_cents: 11200, currency: "USD", date: "2026-08-26T10:20:00Z", status: "failed" },
+  { id: "pay_4f9c21a0", amount_cents: 8999, currency: "USD", date: "2026-09-03T14:22:00Z", status: "recovered", method: "Visa •••• 4242" },
+  { id: "pay_7d1e88b2", amount_cents: 14900, currency: "USD", date: "2026-09-02T09:10:00Z", status: "failed", method: "Mastercard •••• 5318" },
+  { id: "pay_2a6c54ef", amount_cents: 4200, currency: "USD", date: "2026-09-01T17:45:00Z", status: "in_progress", method: "UPI · nandini@oksbi" },
+  { id: "pay_9b0d31fa", amount_cents: 12500, currency: "USD", date: "2026-08-30T11:05:00Z", status: "recovered", method: "Visa •••• 4242" },
+  { id: "pay_c3481e7d", amount_cents: 6700, currency: "USD", date: "2026-08-29T20:30:00Z", status: "escalated", method: "Amex •••• 1005" },
+  { id: "pay_5e2f90bc", amount_cents: 9800, currency: "USD", date: "2026-08-28T08:15:00Z", status: "recovered", method: "Mastercard •••• 5318" },
+  { id: "pay_8a1d6f3c", amount_cents: 5400, currency: "USD", date: "2026-08-27T13:40:00Z", status: "refund", method: "Visa •••• 4242" },
+  { id: "pay_6b4e2d90", amount_cents: 11200, currency: "USD", date: "2026-08-26T10:20:00Z", status: "failed", method: "UPI · vivek@ybl" },
 ];
 
 
@@ -173,6 +181,7 @@ function MerchantDashboard() {
   const [banner, setBanner] = useState<string | null>(null);
   const [sweepDone, setSweepDone] = useState(false);
   const [historyQuery, setHistoryQuery] = useState("");
+  const [detailRow, setDetailRow] = useState<(typeof SAMPLE_HISTORY)[number] | null>(null);
 
   const analyze = useServerFn(analyzeTransaction);
   const analyzeAll = useServerFn(analyzeOpenCases);
@@ -671,6 +680,7 @@ function MerchantDashboard() {
                   <th className="px-5 py-3 font-semibold">Amount</th>
                   <th className="px-5 py-3 font-semibold">Date</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
+                  <th className="px-5 py-3 font-semibold text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -692,12 +702,61 @@ function MerchantDashboard() {
                     <td className="px-5 py-3.5">
                       <StatusPill status={row.status} />
                     </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDetailRow(row)}
+                        className="rounded-xl text-xs"
+                      >
+                        View details
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </section>
+
+        <Dialog open={detailRow !== null} onOpenChange={(open) => !open && setDetailRow(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm text-foreground">
+                {detailRow?.id}
+              </DialogTitle>
+              <DialogDescription>
+                Transaction details
+              </DialogDescription>
+            </DialogHeader>
+            {detailRow && (
+              <dl className="grid grid-cols-3 gap-x-4 gap-y-3 text-sm">
+                <dt className="col-span-1 text-muted-foreground">Payment ID</dt>
+                <dd className="col-span-2 font-mono text-foreground">{detailRow.id}</dd>
+                <dt className="col-span-1 text-muted-foreground">Amount</dt>
+                <dd className="col-span-2 font-semibold text-foreground">
+                  {money(detailRow.amount_cents, detailRow.currency)}
+                </dd>
+                <dt className="col-span-1 text-muted-foreground">Date</dt>
+                <dd className="col-span-2 text-foreground">
+                  {new Date(detailRow.date).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </dd>
+                <dt className="col-span-1 text-muted-foreground">Status</dt>
+                <dd className="col-span-2">
+                  <StatusPill status={detailRow.status} />
+                </dd>
+                <dt className="col-span-1 text-muted-foreground">Payment method</dt>
+                <dd className="col-span-2 text-foreground">{detailRow.method}</dd>
+              </dl>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
