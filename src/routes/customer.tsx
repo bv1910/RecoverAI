@@ -107,12 +107,18 @@ function CustomerPortal() {
         .from("transactions")
         .select("*")
         .ilike("customer_email", userEmail!)
-        .in("status", ["failed", "in_progress", "escalated"])
         .order("failed_at", { ascending: false });
       if (error) throw error;
       return data as Transaction[];
     },
   });
+
+  const outstanding = transactions.filter((tx) =>
+    ["failed", "in_progress", "escalated"].includes(tx.status),
+  );
+  const settled = transactions.filter(
+    (tx) => !["failed", "in_progress", "escalated"].includes(tx.status),
+  );
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -154,7 +160,7 @@ function CustomerPortal() {
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading your payments…
             </div>
-          ) : transactions.length === 0 ? (
+          ) : outstanding.length === 0 ? (
             <div className="mt-8 rounded-xl border border-border bg-secondary p-6 text-center">
               <CheckCircle2 className="mx-auto h-8 w-8 text-emerald-600" />
               <p className="mt-3 text-sm font-medium text-foreground">
@@ -179,7 +185,7 @@ function CustomerPortal() {
             </div>
           ) : (
             <ul className="mt-6 divide-y divide-border">
-              {transactions.map((tx) => (
+              {outstanding.map((tx) => (
                 <li key={tx.id}>
                   <div className="flex flex-col gap-4 py-5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-start gap-4">
@@ -214,6 +220,44 @@ function CustomerPortal() {
             </ul>
           )}
         </div>
+
+        {settled.length > 0 ? (
+          <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-8">
+            <h2 className="text-lg font-semibold text-foreground">
+              Payment history
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Payments that are already settled or closed.
+            </p>
+            <ul className="mt-4 divide-y divide-border">
+              {settled.map((tx) => (
+                <li
+                  key={tx.id}
+                  className="flex items-center justify-between gap-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {money(tx.amount_cents, tx.currency)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(tx.failed_at).toLocaleDateString()} ·{" "}
+                      {tx.payment_method}
+                    </p>
+                  </div>
+                  <span
+                    className={
+                      tx.status === "recovered"
+                        ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
+                        : "rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground"
+                    }
+                  >
+                    {STATUS_COPY[tx.status] ?? tx.status.replace("_", " ")}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </main>
     </div>
   );
