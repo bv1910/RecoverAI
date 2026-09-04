@@ -141,18 +141,24 @@ function LoginPage() {
     if (result.redirected) return;
   };
 
+  // Demo OTP: no SMS provider is connected yet, so we accept a fixed code.
+  const DEMO_OTP = "123456";
+  const demoIdentity = (phoneE164: string) => ({
+    email: `${phoneE164.replace(/\D/g, "")}@phone.recoverai.demo`,
+    password: `demo-${phoneE164.replace(/\D/g, "")}-recoverai`,
+  });
+
   const sendPhoneCode = async (phoneE164: string) => {
     setLoading("otp");
-    const { error } = await supabase.auth.signInWithOtp({ phone: phoneE164 });
+    await new Promise((r) => setTimeout(r, 400));
     setLoading(null);
-    if (error) {
-      setMessage({ tone: "error", text: error.message });
-      return false;
-    }
     localStorage.setItem(PHONE_KEY, phoneE164);
     setPendingPhone(phoneE164);
     setCode("");
-    setMessage({ tone: "info", text: `We sent a 6-digit code to ${phoneE164}.` });
+    setMessage({
+      tone: "info",
+      text: `Demo mode — we sent a 6-digit code to ${phoneE164}. Use ${DEMO_OTP}.`,
+    });
     return true;
   };
 
@@ -193,19 +199,39 @@ function LoginPage() {
     if (!pendingPhone || token.length !== 6) return;
     setMessage(null);
     setLoading("verify");
-    const { error } = await supabase.auth.verifyOtp({
-      phone: pendingPhone,
-      token,
-      type: "sms",
-    });
+
+    if (token !== DEMO_OTP) {
+      setLoading(null);
+      setCode("");
+      setMessage({ tone: "error", text: "That code is incorrect. Try again." });
+      return;
+    }
+
+    const { email, password } = demoIdentity(pendingPhone);
+    let { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      const signUp = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { phone_e164: pendingPhone } },
+      });
+      error = signUp.error;
+      if (!error && !signUp.data.session) {
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        error = retry.error;
+      }
+    }
+
     setLoading(null);
     if (error) {
       setCode("");
-      setMessage({ tone: "error", text: error.message || "That code is invalid or expired." });
+      setMessage({ tone: "error", text: error.message });
       return;
     }
     // onAuthStateChange handles profile upsert + redirect.
   };
+
+
 
 
   return (
