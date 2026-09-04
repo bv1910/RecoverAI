@@ -66,7 +66,9 @@ function LoginPage() {
   const [method, setMethod] = useState<"email" | "phone">("email");
   const [value, setValue] = useState("");
   const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
-  const [loading, setLoading] = useState<"google" | "otp" | null>(null);
+  const [loading, setLoading] = useState<"google" | "otp" | "verify" | null>(null);
+  const [pendingPhone, setPendingPhone] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const [message, setMessage] = useState<{ tone: "error" | "info"; text: string } | null>(null);
 
   const routeForRole = (r: Role) => (r === "merchant" ? "/merchant" : "/customer");
