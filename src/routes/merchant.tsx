@@ -557,12 +557,22 @@ function MerchantDashboard() {
         </div>
 
         <section className="rounded-2xl border border-border bg-card shadow-soft">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
             <div>
               <h2 className="text-base font-semibold text-foreground">Transaction history</h2>
               <p className="text-xs text-muted-foreground">
                 Recent payments across all recovery stages.
               </p>
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={historyQuery}
+                onChange={(e) => setHistoryQuery(e.target.value)}
+                placeholder="Search by payment ID or status"
+                className="h-9 w-full rounded-xl border border-input bg-secondary pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring sm:w-64"
+              />
             </div>
           </div>
 
