@@ -314,12 +314,28 @@ function MerchantDashboard() {
 
         <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
           <section className="rounded-2xl border border-border bg-card shadow-soft">
-            <div className="border-b border-border px-5 py-4">
-              <h2 className="text-base font-semibold text-foreground">Failed transactions</h2>
-              <p className="text-xs text-muted-foreground">
-                Select a case to run the AI Recovery Agent.
-              </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Failed transactions</h2>
+                <p className="text-xs text-muted-foreground">
+                  Every failed payment is scored by the AI Recovery Agent.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-xl text-xs"
+                disabled={sweepMutation.isPending}
+                onClick={() => sweepMutation.mutate(false)}
+              >
+                {sweepMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Bot className="h-4 w-4" />
+                )}
+                Re-analyze all
+              </Button>
             </div>
+
 
             {isLoading ? (
               <p className="px-5 py-10 text-sm text-muted-foreground">Loading cases…</p>
