@@ -345,6 +345,27 @@ function MerchantDashboard() {
                             {tx.failure_reason} · {tx.attempts} attempt
                             {tx.attempts === 1 ? "" : "s"}
                           </p>
+                          {analyses[tx.id] ? (
+                            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${probabilityStyle(
+                                  analyses[tx.id]!.recovery_probability,
+                                )}`}
+                              >
+                                <Bot className="h-3 w-3" />
+                                {analyses[tx.id]!.recovery_probability}% recoverable
+                              </span>
+                              <span className="text-muted-foreground">
+                                Safest:{" "}
+                                {ACTIONS.find((a) => a.key === analyses[tx.id]!.recommended_action)
+                                  ?.label ?? analyses[tx.id]!.recommended_action}
+                              </span>
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {sweepMutation.isPending ? "AI analyzing…" : "Not analyzed yet"}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-3">
                           <StatusPill status={tx.status} />
@@ -352,6 +373,7 @@ function MerchantDashboard() {
                             {money(tx.amount_cents, tx.currency)}
                           </span>
                         </div>
+
                       </button>
                     </li>
                   );
