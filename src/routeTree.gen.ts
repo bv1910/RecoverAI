@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomerRouteImport } from './routes/customer'
 import { Route as MerchantRouteImport } from './routes/merchant'
+import { Route as CustomerRecoverTransactionIdRouteImport } from './routes/customer.recover.$transactionId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,34 +29,49 @@ const MerchantRoute = MerchantRouteImport.update({
   path: '/merchant',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerRecoverTransactionIdRoute =
+  CustomerRecoverTransactionIdRouteImport.update({
+    id: '/recover/$transactionId',
+    path: '/recover/$transactionId',
+    getParentRoute: () => CustomerRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/customer': typeof CustomerRoute
+  '/customer': typeof CustomerRouteWithChildren
   '/merchant': typeof MerchantRoute
+  '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/customer': typeof CustomerRoute
+  '/customer': typeof CustomerRouteWithChildren
   '/merchant': typeof MerchantRoute
+  '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/customer': typeof CustomerRoute
+  '/customer': typeof CustomerRouteWithChildren
   '/merchant': typeof MerchantRoute
+  '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/customer' | '/merchant'
+  fullPaths:
+    '/' | '/customer' | '/merchant' | '/customer/recover/$transactionId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/customer' | '/merchant'
-  id: '__root__' | '/' | '/customer' | '/merchant'
+  to: '/' | '/customer' | '/merchant' | '/customer/recover/$transactionId'
+  id:
+    | '__root__'
+    | '/'
+    | '/customer'
+    | '/merchant'
+    | '/customer/recover/$transactionId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  CustomerRoute: typeof CustomerRoute
+  CustomerRoute: typeof CustomerRouteWithChildren
   MerchantRoute: typeof MerchantRoute
 }
 
@@ -82,12 +98,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MerchantRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customer/recover/$transactionId': {
+      id: '/customer/recover/$transactionId'
+      path: '/recover/$transactionId'
+      fullPath: '/customer/recover/$transactionId'
+      preLoaderRoute: typeof CustomerRecoverTransactionIdRouteImport
+      parentRoute: typeof CustomerRoute
+    }
   }
 }
 
+interface CustomerRouteChildren {
+  CustomerRecoverTransactionIdRoute: typeof CustomerRecoverTransactionIdRoute
+}
+
+const CustomerRouteChildren: CustomerRouteChildren = {
+  CustomerRecoverTransactionIdRoute: CustomerRecoverTransactionIdRoute,
+}
+
+const CustomerRouteWithChildren = CustomerRoute._addFileChildren(
+  CustomerRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  CustomerRoute: CustomerRoute,
+  CustomerRoute: CustomerRouteWithChildren,
   MerchantRoute: MerchantRoute,
 }
 export const routeTree = rootRouteImport
