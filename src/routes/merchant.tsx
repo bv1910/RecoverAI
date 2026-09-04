@@ -718,6 +718,45 @@ function MerchantDashboard() {
             </table>
           </div>
         </section>
+
+        <Dialog open={detailRow !== null} onOpenChange={(open) => !open && setDetailRow(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-mono text-sm text-foreground">
+                {detailRow?.id}
+              </DialogTitle>
+              <DialogDescription>
+                Transaction details
+              </DialogDescription>
+            </DialogHeader>
+            {detailRow && (
+              <dl className="grid grid-cols-3 gap-x-4 gap-y-3 text-sm">
+                <dt className="col-span-1 text-muted-foreground">Payment ID</dt>
+                <dd className="col-span-2 font-mono text-foreground">{detailRow.id}</dd>
+                <dt className="col-span-1 text-muted-foreground">Amount</dt>
+                <dd className="col-span-2 font-semibold text-foreground">
+                  {money(detailRow.amount_cents, detailRow.currency)}
+                </dd>
+                <dt className="col-span-1 text-muted-foreground">Date</dt>
+                <dd className="col-span-2 text-foreground">
+                  {new Date(detailRow.date).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </dd>
+                <dt className="col-span-1 text-muted-foreground">Status</dt>
+                <dd className="col-span-2">
+                  <StatusPill status={detailRow.status} />
+                </dd>
+                <dt className="col-span-1 text-muted-foreground">Payment method</dt>
+                <dd className="col-span-2 text-foreground">{detailRow.method}</dd>
+              </dl>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
