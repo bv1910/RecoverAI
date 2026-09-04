@@ -244,55 +244,7 @@ function RecoveryPage() {
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="cardNumber" className="text-sm font-medium">
-                    Card number
-                  </Label>
-                  <div className="relative">
-                    <CreditCard className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="cardNumber"
-                      placeholder="4242 4242 4242 4242"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      className="h-12 rounded-xl pl-10"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="expiry" className="text-sm font-medium">
-                      Expiry
-                    </Label>
-                    <Input
-                      id="expiry"
-                      placeholder="MM / YY"
-                      value={expiry}
-                      onChange={(e) => setExpiry(e.target.value)}
-                      className="h-12 rounded-xl"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cvc" className="text-sm font-medium">
-                      CVC
-                    </Label>
-                    <Input
-                      id="cvc"
-                      type="password"
-                      placeholder="123"
-                      maxLength={4}
-                      value={cvc}
-                      onChange={(e) => setCvc(e.target.value)}
-                      className="h-12 rounded-xl"
-                      required
-                    />
-                  </div>
-                </div>
-
+              <div className="mt-6 space-y-4">
                 {result?.type === "error" ? (
                   <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
                     {result.message}
@@ -300,25 +252,31 @@ function RecoveryPage() {
                 ) : null}
 
                 <Button
-                  type="submit"
-                  disabled={retryMutation.isPending}
+                  onClick={() => payMutation.mutate()}
+                  disabled={payMutation.isPending}
                   className="h-12 w-full rounded-xl text-sm font-semibold"
                 >
-                  {retryMutation.isPending ? (
+                  {payMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Lock className="h-4 w-4" />
                   )}
-                  {retryMutation.isPending
-                    ? "Processing…"
-                    : `Pay ${money(tx?.amount_cents ?? 0, tx?.currency)}`}
+                  {payMutation.isPending
+                    ? "Opening secure checkout…"
+                    : `Pay now · ${money(tx?.amount_cents ?? 0, tx?.currency)}`}
                 </Button>
-              </form>
+
+                <p className="text-center text-xs text-muted-foreground">
+                  You'll be redirected to Razorpay's secure checkout (test mode).
+                  Card details never touch our servers.
+                </p>
+              </div>
 
               <div className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                 <ShieldCheck className="h-3.5 w-3.5" />
                 Encrypted and PCI compliant
               </div>
+
             </>
           )}
         </div>
