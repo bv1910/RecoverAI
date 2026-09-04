@@ -93,12 +93,10 @@ function RecoveryPage() {
   const navigate = useNavigate();
   const params = useParams({ from: "/customer/recover/$transactionId" });
   const queryClient = useQueryClient();
-  const retry = useServerFn(retryCustomerPayment);
+  const createOrder = useServerFn(createRecoveryOrder);
+  const verifyPayment = useServerFn(verifyRecoveryPayment);
 
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
   const [result, setResult] = useState<
     | { type: "success"; status: string }
     | { type: "error"; message: string }
@@ -130,23 +128,67 @@ function RecoveryPage() {
     },
   });
 
-  const retryMutation = useMutation({
-    mutationFn: () => retry({ data: { transactionId: params.transactionId } }),
+  const payMutation = useMutation({
+    mutationFn: async () => {
+      setResult(null);
+      const Razorpay = await loadRazorpay();
+      const order = await createOrder({
+        data: { transactionId: params.transactionId },
+      });
+
+      return await new Promise<{ status: string }>((resolve, reject) => {
+        const checkout = new Razorpay({
+          key: order.keyId,
+          amount: order.amount,
+          currency: order.currency,
+          order_id: order.orderId,
+          name: "RecoverAI",
+          description: "Recovery payment",
+          prefill: { name: order.customerName, email: order.customerEmail },
+          theme: { color: "#4f46e5" },
+          modal: {
+            ondismiss: () =>
+              reject(new Error("Checkout closed before the payment completed.")),
+          },
+          handler: (response: {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+          }) => {
+            verifyPayment({
+              data: {
+                transactionId: params.transactionId,
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+              },
+            })
+              .then(resolve)
+              .catch(reject);
+          },
+        });
+        checkout.on("payment.failed", (event: any) =>
+          reject(
+            new Error(
+              event?.error?.description ?? "The payment could not be completed.",
+            ),
+          ),
+        );
+        checkout.open();
+      });
+    },
     onSuccess: (data) => {
       setResult({ type: "success", status: data.status });
       void queryClient.invalidateQueries({ queryKey: ["customer-transactions"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["customer-transaction", params.transactionId],
+      });
     },
     onError: (error: Error) => {
       setResult({ type: "error", message: error.message });
     },
   });
 
-  const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!cardNumber.trim() || !expiry.trim() || !cvc.trim()) return;
-    setResult(null);
-    retryMutation.mutate();
-  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
