@@ -17,7 +17,6 @@ The product ships as a single web app with two experiences behind one sign-in fl
 
 - [Features](#features)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
