@@ -87,8 +87,10 @@ const money = (cents: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(cents / 100);
+
 
 const STATUS_STYLE: Record<string, string> = {
   failed: "bg-destructive/10 text-destructive",
@@ -280,11 +282,15 @@ function MerchantDashboard() {
   const openCases = transactions.filter((t) =>
     ["failed", "in_progress", "escalated"].includes(t.status),
   );
+  const recoveredCases = transactions.filter((t) => t.status === "recovered");
+  const currency = transactions[0]?.currency ?? "USD";
   const atRisk = openCases.reduce((sum, t) => sum + t.amount_cents, 0);
-  const recovered = transactions
-    .filter((t) => t.status === "recovered")
-    .reduce((sum, t) => sum + t.amount_cents, 0);
-  const rate = atRisk + recovered > 0 ? Math.round((recovered / (atRisk + recovered)) * 100) : 0;
+  const recovered = recoveredCases.reduce((sum, t) => sum + t.amount_cents, 0);
+  const exposed = atRisk + recovered;
+  const rawRate = exposed > 0 ? (recovered / exposed) * 100 : 0;
+  const rate =
+    exposed === 0 ? "0%" : `${rawRate >= 10 ? Math.round(rawRate) : rawRate.toFixed(1)}%`;
+
 
   const filteredHistory = SAMPLE_HISTORY.filter((row) => {
     const q = historyQuery.trim().toLowerCase();
@@ -353,23 +359,38 @@ function MerchantDashboard() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Revenue at risk"
-            value={money(atRisk)}
-            hint={`${openCases.length} unresolved payments`}
+            value={isLoading ? "—" : money(atRisk, currency)}
+            hint={
+              isLoading
+                ? "Loading…"
+                : `${openCases.length} unresolved payment${openCases.length === 1 ? "" : "s"}`
+            }
             icon={AlertTriangle}
             accent
           />
           <MetricCard
             label="Revenue recovered"
-            value={money(recovered)}
-            hint="Settled after intervention"
+            value={isLoading ? "—" : money(recovered, currency)}
+            hint={
+              isLoading
+                ? "Loading…"
+                : `${recoveredCases.length} payment${recoveredCases.length === 1 ? "" : "s"} settled`
+            }
             icon={CircleDollarSign}
           />
           <MetricCard
             label="Recovery rate"
-            value={`${rate}%`}
-            hint="Recovered vs. total exposed"
+            value={isLoading ? "—" : rate}
+            hint={
+              isLoading
+                ? "Loading…"
+                : exposed > 0
+                  ? `${money(recovered, currency)} of ${money(exposed, currency)} exposed`
+                  : "No exposure yet"
+            }
             icon={ArrowUpRight}
           />
+
           <MetricCard
             label="Active cases"
             value={String(openCases.length)}
