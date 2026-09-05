@@ -24,6 +24,7 @@ import {
   analyzeTransaction,
   runRecoveryAction,
 } from "@/lib/ai-recovery.functions";
+import { getOnboardingStatus } from "@/lib/onboarding.functions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
