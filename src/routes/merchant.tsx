@@ -188,12 +188,26 @@ function MerchantDashboard() {
   const analyze = useServerFn(analyzeTransaction);
   const analyzeAll = useServerFn(analyzeOpenCases);
   const act = useServerFn(runRecoveryAction);
+  const onboardingStatus = useServerFn(getOnboardingStatus);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) navigate({ to: "/", replace: true });
     });
   }, [navigate]);
+
+  const { data: onboarding } = useQuery({
+    queryKey: ["onboarding-status"],
+    queryFn: () => onboardingStatus(),
+  });
+
+  useEffect(() => {
+    if (onboarding && !onboarding.onboarded && onboarding.ownTransactions === 0) {
+      navigate({ to: "/onboarding", replace: true });
+    }
+  }, [onboarding, navigate]);
+
+
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions"],
