@@ -87,8 +87,10 @@ const money = (cents: number, currency = "USD") =>
   new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: cents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
   }).format(cents / 100);
+
 
 const STATUS_STYLE: Record<string, string> = {
   failed: "bg-destructive/10 text-destructive",
