@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CustomerRouteImport } from './routes/customer'
 import { Route as MerchantRouteImport } from './routes/merchant'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PayRouteImport } from './routes/pay'
 import { Route as CustomerRecoverTransactionIdRouteImport } from './routes/customer.recover.$transactionId'
 
@@ -30,6 +31,11 @@ const MerchantRoute = MerchantRouteImport.update({
   path: '/merchant',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PayRoute = PayRouteImport.update({
   id: '/pay',
   path: '/pay',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/customer': typeof CustomerRouteWithChildren
   '/merchant': typeof MerchantRoute
+  '/onboarding': typeof OnboardingRoute
   '/pay': typeof PayRoute
   '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/customer': typeof CustomerRouteWithChildren
   '/merchant': typeof MerchantRoute
+  '/onboarding': typeof OnboardingRoute
   '/pay': typeof PayRoute
   '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/customer': typeof CustomerRouteWithChildren
   '/merchant': typeof MerchantRoute
+  '/onboarding': typeof OnboardingRoute
   '/pay': typeof PayRoute
   '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
@@ -70,6 +79,7 @@ export interface FileRouteTypes {
     | '/'
     | '/customer'
     | '/merchant'
+    | '/onboarding'
     | '/pay'
     | '/customer/recover/$transactionId'
   fileRoutesByTo: FileRoutesByTo
@@ -77,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/customer'
     | '/merchant'
+    | '/onboarding'
     | '/pay'
     | '/customer/recover/$transactionId'
   id:
@@ -84,6 +95,7 @@ export interface FileRouteTypes {
     | '/'
     | '/customer'
     | '/merchant'
+    | '/onboarding'
     | '/pay'
     | '/customer/recover/$transactionId'
   fileRoutesById: FileRoutesById
@@ -92,6 +104,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CustomerRoute: typeof CustomerRouteWithChildren
   MerchantRoute: typeof MerchantRoute
+  OnboardingRoute: typeof OnboardingRoute
   PayRoute: typeof PayRoute
 }
 
@@ -116,6 +129,13 @@ declare module '@tanstack/react-router' {
       path: '/merchant'
       fullPath: '/merchant'
       preLoaderRoute: typeof MerchantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pay': {
@@ -151,6 +171,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CustomerRoute: CustomerRouteWithChildren,
   MerchantRoute: MerchantRoute,
+  OnboardingRoute: OnboardingRoute,
   PayRoute: PayRoute,
 }
 export const routeTree = rootRouteImport
