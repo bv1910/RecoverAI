@@ -282,11 +282,15 @@ function MerchantDashboard() {
   const openCases = transactions.filter((t) =>
     ["failed", "in_progress", "escalated"].includes(t.status),
   );
+  const recoveredCases = transactions.filter((t) => t.status === "recovered");
+  const currency = transactions[0]?.currency ?? "USD";
   const atRisk = openCases.reduce((sum, t) => sum + t.amount_cents, 0);
-  const recovered = transactions
-    .filter((t) => t.status === "recovered")
-    .reduce((sum, t) => sum + t.amount_cents, 0);
-  const rate = atRisk + recovered > 0 ? Math.round((recovered / (atRisk + recovered)) * 100) : 0;
+  const recovered = recoveredCases.reduce((sum, t) => sum + t.amount_cents, 0);
+  const exposed = atRisk + recovered;
+  const rawRate = exposed > 0 ? (recovered / exposed) * 100 : 0;
+  const rate =
+    exposed === 0 ? "0%" : `${rawRate >= 10 ? Math.round(rawRate) : rawRate.toFixed(1)}%`;
+
 
   const filteredHistory = SAMPLE_HISTORY.filter((row) => {
     const q = historyQuery.trim().toLowerCase();
