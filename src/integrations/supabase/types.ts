@@ -98,28 +98,40 @@ export type Database = {
       }
       profiles: {
         Row: {
+          business_name: string | null
+          business_website: string | null
           created_at: string
+          default_currency: string
           email: string | null
           full_name: string | null
           id: string
+          onboarded_at: string | null
           phone_e164: string | null
           role: string
           updated_at: string
         }
         Insert: {
+          business_name?: string | null
+          business_website?: string | null
           created_at?: string
+          default_currency?: string
           email?: string | null
           full_name?: string | null
           id: string
+          onboarded_at?: string | null
           phone_e164?: string | null
           role?: string
           updated_at?: string
         }
         Update: {
+          business_name?: string | null
+          business_website?: string | null
           created_at?: string
+          default_currency?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          onboarded_at?: string | null
           phone_e164?: string | null
           role?: string
           updated_at?: string
