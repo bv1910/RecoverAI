@@ -359,23 +359,38 @@ function MerchantDashboard() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricCard
             label="Revenue at risk"
-            value={money(atRisk)}
-            hint={`${openCases.length} unresolved payments`}
+            value={isLoading ? "—" : money(atRisk, currency)}
+            hint={
+              isLoading
+                ? "Loading…"
+                : `${openCases.length} unresolved payment${openCases.length === 1 ? "" : "s"}`
+            }
             icon={AlertTriangle}
             accent
           />
           <MetricCard
             label="Revenue recovered"
-            value={money(recovered)}
-            hint="Settled after intervention"
+            value={isLoading ? "—" : money(recovered, currency)}
+            hint={
+              isLoading
+                ? "Loading…"
+                : `${recoveredCases.length} payment${recoveredCases.length === 1 ? "" : "s"} settled`
+            }
             icon={CircleDollarSign}
           />
           <MetricCard
             label="Recovery rate"
-            value={`${rate}%`}
-            hint="Recovered vs. total exposed"
+            value={isLoading ? "—" : rate}
+            hint={
+              isLoading
+                ? "Loading…"
+                : exposed > 0
+                  ? `${money(recovered, currency)} of ${money(exposed, currency)} exposed`
+                  : "No exposure yet"
+            }
             icon={ArrowUpRight}
           />
+
           <MetricCard
             label="Active cases"
             value={String(openCases.length)}
