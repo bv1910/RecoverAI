@@ -15,6 +15,7 @@ import { Route as MerchantRouteImport } from './routes/merchant'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as PayRouteImport } from './routes/pay'
 import { Route as StatusRouteImport } from './routes/status'
+import { Route as CustomerReceiptTransactionIdRouteImport } from './routes/customer.receipt.$transactionId'
 import { Route as CustomerRecoverTransactionIdRouteImport } from './routes/customer.recover.$transactionId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,12 @@ const StatusRoute = StatusRouteImport.update({
   path: '/status',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerReceiptTransactionIdRoute =
+  CustomerReceiptTransactionIdRouteImport.update({
+    id: '/receipt/$transactionId',
+    path: '/receipt/$transactionId',
+    getParentRoute: () => CustomerRoute,
+  } as any)
 const CustomerRecoverTransactionIdRoute =
   CustomerRecoverTransactionIdRouteImport.update({
     id: '/recover/$transactionId',
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/pay': typeof PayRoute
   '/status': typeof StatusRoute
+  '/customer/receipt/$transactionId': typeof CustomerReceiptTransactionIdRoute
   '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
 export interface FileRoutesByTo {
@@ -70,6 +78,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/pay': typeof PayRoute
   '/status': typeof StatusRoute
+  '/customer/receipt/$transactionId': typeof CustomerReceiptTransactionIdRoute
   '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
 export interface FileRoutesById {
@@ -80,6 +89,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/pay': typeof PayRoute
   '/status': typeof StatusRoute
+  '/customer/receipt/$transactionId': typeof CustomerReceiptTransactionIdRoute
   '/customer/recover/$transactionId': typeof CustomerRecoverTransactionIdRoute
 }
 export interface FileRouteTypes {
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/pay'
     | '/status'
+    | '/customer/receipt/$transactionId'
     | '/customer/recover/$transactionId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/pay'
     | '/status'
+    | '/customer/receipt/$transactionId'
     | '/customer/recover/$transactionId'
   id:
     | '__root__'
@@ -109,6 +121,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/pay'
     | '/status'
+    | '/customer/receipt/$transactionId'
     | '/customer/recover/$transactionId'
   fileRoutesById: FileRoutesById
 }
@@ -165,6 +178,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StatusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customer/receipt/$transactionId': {
+      id: '/customer/receipt/$transactionId'
+      path: '/receipt/$transactionId'
+      fullPath: '/customer/receipt/$transactionId'
+      preLoaderRoute: typeof CustomerReceiptTransactionIdRouteImport
+      parentRoute: typeof CustomerRoute
+    }
     '/customer/recover/$transactionId': {
       id: '/customer/recover/$transactionId'
       path: '/recover/$transactionId'
@@ -176,10 +196,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface CustomerRouteChildren {
+  CustomerReceiptTransactionIdRoute: typeof CustomerReceiptTransactionIdRoute
   CustomerRecoverTransactionIdRoute: typeof CustomerRecoverTransactionIdRoute
 }
 
 const CustomerRouteChildren: CustomerRouteChildren = {
+  CustomerReceiptTransactionIdRoute: CustomerReceiptTransactionIdRoute,
   CustomerRecoverTransactionIdRoute: CustomerRecoverTransactionIdRoute,
 }
 
