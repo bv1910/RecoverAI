@@ -11,6 +11,10 @@ The product ships as a single web app with two experiences behind one sign-in fl
 
 > 38% average recovery lift · payments monitored at scale · bank-grade encryption · PCI DSS Level 1
 
+<p align="center">
+  <img src="public/dashboard.png" alt="RecoverAI Dashboard" width="800">
+</p>
+
 ---
 
 ## Table of Contents
