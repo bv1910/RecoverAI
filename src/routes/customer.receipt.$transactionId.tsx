@@ -292,7 +292,7 @@ function ReceiptPage() {
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Date & time</span>
                 <span className="font-medium text-foreground">
-                  {formatDate(payment?.created_at ?? tx.recovered_at ?? tx.failed_at)}
+                  {formatDate(payment?.created_at ?? tx.updated_at)}
                 </span>
               </div>
               <div className="flex justify-between gap-4">
