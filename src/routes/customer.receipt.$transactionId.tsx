@@ -38,7 +38,7 @@ type Transaction = {
   payment_method: string;
   attempts: number;
   failed_at: string;
-  recovered_at: string | null;
+  updated_at: string;
   merchant_id: string | null;
 };
 
