@@ -240,7 +240,7 @@ function CustomerPortal() {
               {settled.map((tx) => (
                 <li
                   key={tx.id}
-                  className="flex items-center justify-between gap-4 py-3"
+                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="text-sm font-medium text-foreground">
@@ -251,15 +251,27 @@ function CustomerPortal() {
                       {tx.payment_method}
                     </p>
                   </div>
-                  <span
-                    className={
-                      tx.status === "recovered"
-                        ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
-                        : "rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground"
-                    }
-                  >
-                    {STATUS_COPY[tx.status] ?? tx.status.replace("_", " ")}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={
+                        tx.status === "recovered"
+                          ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"
+                          : "rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground"
+                      }
+                    >
+                      {STATUS_COPY[tx.status] ?? tx.status.replace("_", " ")}
+                    </span>
+                    {tx.status === "recovered" ? (
+                      <Link
+                        to="/customer/receipt/$transactionId"
+                        params={{ transactionId: tx.id }}
+                      >
+                        <Button variant="outline" size="sm" className="rounded-xl text-xs">
+                          View receipt
+                        </Button>
+                      </Link>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>
