@@ -140,9 +140,16 @@ function CustomerPortal() {
               <p className="text-xs text-muted-foreground">Customer portal</p>
             </div>
           </div>
-          <Button variant="outline" onClick={signOut} className="rounded-xl">
-            Sign out
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/status">
+              <Button variant="outline" className="rounded-xl">
+                Payment status
+              </Button>
+            </Link>
+            <Button variant="outline" onClick={signOut} className="rounded-xl">
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
 
