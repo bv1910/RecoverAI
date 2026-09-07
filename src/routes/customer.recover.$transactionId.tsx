@@ -124,11 +124,14 @@ function RecoveryPage() {
         },
       });
     },
-    onSuccess: (data) => {
-      setResult({ type: "success", status: data.status });
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["customer-transactions"] });
       void queryClient.invalidateQueries({
         queryKey: ["customer-transaction", params.transactionId],
+      });
+      navigate({
+        to: "/customer/receipt/$transactionId",
+        params: { transactionId: params.transactionId },
       });
     },
     onError: (error: Error) => {
